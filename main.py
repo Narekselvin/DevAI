@@ -29,13 +29,15 @@ def build_argument_parser():
     audit_parser = subparsers.add_parser('audit')
     audit_parser.add_argument('--include-antivirus', action='store_true')
     audit_parser.add_argument('--subnet', default=None)
+    audit_parser.add_argument('--lang', choices=['en', 'ru', 'hy'], default='en')
     logs_parser = subparsers.add_parser('logs')
-    database_init_parser = subparsers.add_parser('database-init')
-    database_update_parser = subparsers.add_parser('database-update')
+    logs_parser.add_argument('--lang', choices=['en', 'ru', 'hy'], default='en')
+    subparsers.add_parser('database-init')
+    subparsers.add_parser('database-update')
     return parser_object
 
 
-def execute_full_audit_flow(database_connection, include_antivirus, top_matches_value, subnet_string=None):
+def execute_full_audit_flow(database_connection, include_antivirus, top_matches_value, subnet_string=None, target_language='en'):
     scanner_results_payload = run_full_system_surface_scan(subnet_string)
     antivirus_results_payload = scan_filesystem_for_integrity_anomalies() if include_antivirus else {}
     log_insights_payload = collect_operating_system_log_insights()
@@ -45,9 +47,12 @@ def execute_full_audit_flow(database_connection, include_antivirus, top_matches_
     if include_antivirus is False:
         antivirus_query_text = ''
     merged_query_text = merge_query_streams(scanner_query_text, log_query_text, antivirus_query_text)
-    remediation_matches = generate_structured_remediation_plan(database_connection, merged_query_text, top_matches_value)
+    remediation_matches = generate_structured_remediation_plan(
+        database_connection, merged_query_text, top_matches_value, target_language
+    )
     output_payload = {
         'analysis_mode': 'full_audit',
+        'language': target_language,
         'sources': {
             'scanner_module': 'scanner.py',
             'log_module': 'log_analyzer.py',
@@ -68,7 +73,7 @@ def execute_full_audit_flow(database_connection, include_antivirus, top_matches_
     return output_payload
 
 
-def execute_targeted_log_analysis_flow(database_connection, top_matches_value):
+def execute_targeted_log_analysis_flow(database_connection, top_matches_value, target_language='en'):
     log_insights_payload = collect_operating_system_log_insights()
     empty_scanner_placeholder = {'listening_sockets': [], 'weak_permission_findings': [], 'python_package_outdated_report': {'packages': []}, 'configuration_drift_hints': []}
     empty_antivirus_placeholder = {'hash_signature_hits': [], 'yara_signature_hits': [], 'isolated_suspicious_paths': []}
@@ -76,9 +81,12 @@ def execute_targeted_log_analysis_flow(database_connection, top_matches_value):
     antivirus_query_text = build_query_text_from_antivirus_payload(empty_antivirus_placeholder)
     log_query_text = build_query_text_from_log_payload(log_insights_payload)
     merged_query_text = merge_query_streams(scanner_query_text, log_query_text, antivirus_query_text)
-    remediation_matches = generate_structured_remediation_plan(database_connection, log_query_text, top_matches_value)
+    remediation_matches = generate_structured_remediation_plan(
+        database_connection, log_query_text, top_matches_value, target_language
+    )
     output_payload = {
         'analysis_mode': 'targeted_log_analysis',
+        'language': target_language,
         'sources': {
             'log_module': 'log_analyzer.py',
             'knowledge_engine': 'engine.py',
@@ -116,14 +124,17 @@ def main(argv=None):
         if command_token == 'audit':
             include_antivirus_flag = parsed_arguments.include_antivirus
             subnet_argument_value = getattr(parsed_arguments, 'subnet', None)
+            language_code = getattr(parsed_arguments, 'lang', 'en')
             output_payload = execute_full_audit_flow(
                 database_connection,
                 include_antivirus_flag,
                 top_matches_value,
                 subnet_argument_value,
+                language_code,
             )
         elif command_token == 'logs':
-            output_payload = execute_targeted_log_analysis_flow(database_connection, top_matches_value)
+            language_code = getattr(parsed_arguments, 'lang', 'en')
+            output_payload = execute_targeted_log_analysis_flow(database_connection, top_matches_value, language_code)
         else:
             parser_object.print_help()
             return 2

@@ -7,24 +7,42 @@ from sklearn.metrics.pairwise import cosine_similarity
 from knowledge_db import get_connection
 
 
-def load_remediation_documents(connection):
+def load_remediation_documents(connection, target_language):
+    normalized_language = target_language if target_language in ('en', 'ru', 'hy') else 'en'
     cursor = connection.cursor()
     cursor.execute(
-        'SELECT remediation_id, title, mapped_symptoms, resolution_steps FROM remediations ORDER BY remediation_id'
+        'SELECT remediation_id, title_en, title_ru, title_hy, mapped_symptoms, '
+        'steps_en, steps_ru, steps_hy, nlp_baseline_en FROM remediations ORDER BY remediation_id'
     )
     rows = cursor.fetchall()
     combined_documents = []
     metadata_rows = []
-    for remediation_id, title_text, mapped_symptoms_text, resolution_steps_text in rows:
-        merged_text = ' '.join(
-            fragment for fragment in [title_text, mapped_symptoms_text, resolution_steps_text] if fragment
-        )
-        combined_documents.append(merged_text)
+    for (
+        remediation_id,
+        title_en,
+        title_ru,
+        title_hy,
+        mapped_symptoms_text,
+        steps_en,
+        steps_ru,
+        steps_hy,
+        nlp_baseline_en,
+    ) in rows:
+        combined_documents.append(nlp_baseline_en or '')
+        if normalized_language == 'ru':
+            localized_title = title_ru
+            localized_steps = steps_ru
+        elif normalized_language == 'hy':
+            localized_title = title_hy
+            localized_steps = steps_hy
+        else:
+            localized_title = title_en
+            localized_steps = steps_en
         metadata_rows.append(
             {
                 'remediation_id': remediation_id,
-                'title': title_text,
-                'resolution_steps': resolution_steps_text,
+                'title': localized_title,
+                'resolution_steps': localized_steps,
                 'mapped_symptoms': mapped_symptoms_text,
             }
         )
@@ -130,8 +148,8 @@ def compute_tfidf_similarity_ranking(query_text, combined_documents, metadata_ro
     return ranked_results
 
 
-def generate_structured_remediation_plan(connection, primary_query_text, maximum_matches):
-    combined_documents, metadata_rows = load_remediation_documents(connection)
+def generate_structured_remediation_plan(connection, primary_query_text, maximum_matches, target_language='en'):
+    combined_documents, metadata_rows = load_remediation_documents(connection, target_language)
     return compute_tfidf_similarity_ranking(primary_query_text, combined_documents, metadata_rows, maximum_matches)
 
 

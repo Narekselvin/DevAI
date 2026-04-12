@@ -8,13 +8,37 @@ def get_connection(db_path=None):
     return sqlite3.connect(str(db_path))
 
 
+def _remediations_table_needs_rebuild(connection):
+    cursor = connection.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='remediations'")
+    if cursor.fetchone() is None:
+        return False
+    cursor.execute('PRAGMA table_info(remediations)')
+    column_names = {row[1] for row in cursor.fetchall()}
+    return 'title_en' not in column_names
+
+
+def _rebuild_remediations_branch(connection):
+    connection.execute('DROP TABLE IF EXISTS error_codes')
+    connection.execute('DROP TABLE IF EXISTS known_vulnerabilities')
+    connection.execute('DROP TABLE IF EXISTS remediations')
+    connection.commit()
+
+
 def initialize_schema(connection):
+    if _remediations_table_needs_rebuild(connection):
+        _rebuild_remediations_branch(connection)
     connection.execute(
         'CREATE TABLE IF NOT EXISTS remediations ('
         'remediation_id INTEGER PRIMARY KEY AUTOINCREMENT,'
-        'title TEXT NOT NULL,'
+        'title_en TEXT NOT NULL,'
+        'title_ru TEXT NOT NULL,'
+        'title_hy TEXT NOT NULL,'
         'mapped_symptoms TEXT NOT NULL,'
-        'resolution_steps TEXT NOT NULL'
+        'steps_en TEXT NOT NULL,'
+        'steps_ru TEXT NOT NULL,'
+        'steps_hy TEXT NOT NULL,'
+        'nlp_baseline_en TEXT NOT NULL'
         ')'
     )
     connection.execute(
@@ -53,110 +77,242 @@ def seed_sample_manual_entries(connection):
         return
     remediation_payloads = [
         (
-            'Stabilize crashing authentication service after repeated failures',
-            'authentication failure brute force ssh pam service crash',
+            'Stabilize identity services after authentication failure storms',
+            'Стабилизация служб идентификации после всплесков сбоев аутентификации',
+            'Հաստատունացրեք ինքնության ծառայությունները հավաստիացման ձախողման ալիքներից հետո',
+            'authentication failure brute force ssh pam service crash lockout password policy',
             (
-                'Verify account lockout thresholds and password policy alignment. '
-                'Review PAM or Windows Account Lockout Policy. '
-                'Enable multi-factor authentication for exposed services. '
-                'Block offending source addresses at the perimeter firewall. '
-                'Rotate compromised credentials and audit privileged accounts.'
+                'Establish a coordinated incident bridge and freeze non-essential account changes until the blast radius is understood. '
+                'Correlate authentication logs across domain controllers, VPN gateways, and bastion hosts to identify source addresses, user cohorts, and shared factors such as reused passwords or legacy protocols. '
+                'Tighten account lockout thresholds and enable progressive delays or CAPTCHA-style friction only after validating legitimate service accounts will not be impacted. '
+                'Enforce multi-factor authentication on every externally reachable entry point, rotate any credentials that showed successful access during the anomaly window, and schedule a privileged access review. '
+                'Document indicators, containment actions, and monitoring improvements so operational playbooks and aviation-grade change controls stay aligned.'
+            ),
+            (
+                'Сформируйте единый инцидентный мост и приостановите необязательные изменения учетных записей, пока не будет понятен масштаб воздействия. '
+                'Сопоставьте журналы аутентификации на контроллерах домена, шлюзах VPN и бастионных хостах, чтобы выявить исходные адреса, группы пользователей и общие факторы вроде повторно используемых паролей или устаревших протоколов. '
+                'Ужесточите пороги блокировки учетных записей и внедряйте прогрессивные задержки или дополнительное трение только после проверки, что служебные учетные записи не пострадают. '
+                'Включите многофакторную аутентификацию на каждой внешней точке входа, смените учетные данные, которые получили успешный доступ в окне аномалии, и запланируйте пересмотр привилегированного доступа. '
+                'Зафиксируйте индикаторы, меры сдерживания и улучшения мониторинга, чтобы операционные сценарии и авиационный контроль изменений оставались согласованными.'
+            ),
+            (
+                'Կազմակերպեք համակարգված միջադեպի կամուրջ և սառեցրեք ոչ անհրաժեշտ հաշվի փոփոխությունները, մինչև հասկանալի լինի ազդեցության շրջանակը։ '
+                'Համադրեք վավերացման մատյանները դոմենի կառավարիչների, VPN դարպասների և բաստիոն հոսթերի վրա՝ աղբյուրի հասցեները, օգտվողների խմբերը և ընդհանուր գործոնները հայտնաբերելու համար, ինչպիսիք են կրկնակի օգտագործվող գաղտնաբառերը կամ հնացած արձանագրությունները։ '
+                'Խստացրեք հաշվի կողպման շեմերը և աստիճանական ուշացումներ կամ լրացուցիչ խոչընդոտներ մտցրեք միայն այն բանից հետո, երբ հաստատեք, որ ծառայողական հաշիվները չեն տուժի։ '
+                'Միացրեք բազմ գործոնային վավերացումը յուրաքանչյուրը արտաքինից հասանելի մուտքի կետում, պտտեցրեք հավատարմագրերը, որոնք անոմալիայի պատուհանում հաջող մուտք են ունեցել, և պլանավորեք արտոնյալ մուտքի վերանայում։ '
+                'Փաստագրեք ցուցանիշները, զսպման գործողությունները և մոնիտորինգի բարելավումները, որպեսզի գործառնական սցենարները և ավիացիոն փոփոխությունների վերահսկողությունը համաձայնեցված մնան։'
+            ),
+            (
+                'authentication failure brute force ssh pam pluggable authentication module account lockout password policy '
+                'multi-factor mfa perimeter firewall credential rotation privileged access review vpn gateway domain controller '
+                'bastion host repeated login failures service crash identity anomaly burst containment monitoring'
             ),
         ),
         (
-            'Mitigate listener exposure on unexpected network ports',
-            'open port listener unexpected service exposure bind',
+            'Reduce unauthorized network listener and unexpected service exposure',
+            'Снижение несанкционированных сетевых прослушивателей и неожиданной экспозиции сервисов',
+            'Նվազեցրեք չարտոնված ցանցային լսողների և անսպասելի ծառայությունների բացահայտվածությունը',
+            'open port listener unexpected service exposure bind socket unauthorized',
             (
-                'Identify the owning process for each unexpected listener. '
-                'Stop or reconfigure unnecessary services. '
-                'Restrict inbound rules to required subnets only. '
-                'Apply host-based firewall policies matching least privilege. '
-                'Document approved services and monitor for drift.'
+                'Inventory every listening socket with process identity, binary path, and startup mechanism before changing firewall rules. '
+                'For each unexpected listener, determine whether it is an approved agent, a shadow IT tool, or potential malware persistence, and capture packet captures if lateral movement is suspected. '
+                'Restrict inbound access using host-based firewalls and network segmentation so only approved administrative planes can reach sensitive ports. '
+                'Remove or reconfigure services that lack a documented owner, rotate secrets bound to those services, and add configuration drift detection to alert when new listeners appear. '
+                'Close the change record with updated architecture diagrams and UAV or aviation ground-segment interface classifications where applicable.'
+            ),
+            (
+                'Перед изменением правил межсетевого экрана инвентаризируйте каждый прослушивающий сокет с идентификатором процесса, путем к бинарному файлу и механизмом автозапуска. '
+                'Для каждого неожиданного прослушивателя определите, является ли он утвержденным агентом, несанкционированным инструментом или потенциальной закрепленной малварью, и при подозрении на горизонтальное перемещение выполните захват трафика. '
+                'Ограничьте входящий доступ с помощью межсетевых экранов на хостах и сегментации сети так, чтобы только утвержденные административные плоскости достигали чувствительных портов. '
+                'Удалите или перенастройте сервисы без задокументированного владельца, смените секреты, связанные с этими сервисами, и добавьте обнаружение дрейфа конфигурации для оповещения о появлении новых прослушивателей. '
+                'Завершите запись об изменении обновленными диаграммами архитектуры и классификацией интерфейсов наземного сегмента БПЛА или авиации при необходимости.'
+            ),
+            (
+                'Նախքան firewall կանոնների փոփոխությունը գույքագրեք յուրաքանչյուր լսող սոկետը՝ գործընթացի նույնականությամբ, բինարային ուղով և մեկնարկի մեխանիզմով։ '
+                'Անսպասելի լսողի համար որոշեք՝ դա հաստատված գործակալ է, ստվերային IT գործիք, թե հնարավոր վնասակար ծրագրի կայունություն, և կասկածելի լայնակի տեղաշարժի դեպքում կատարեք փաթեթների բռնում։ '
+                'Սահմանափակեք ներհոսքի մուտքը հոսթի firewall-ներով և ցանցի սեգմենտացիայով, որպեսզի միայն հաստատված վարչական հարթությունները հասնեն զգայուն պորտերին։ '
+                'Հեռացրեք կամ վերակոնֆիգուրացրեք ծառայությունները, որոնք չունեն փաստագրված սեփականատեր, պտտեցրեք այդ ծառայություններին կապված գաղտնիքները և ավելացրեք կոնֆիգուրացիայի շեղման հայտնաբերում՝ նոր լսողների համար։ '
+                'Փակեք փոփոխության գրառումը՝ թարմացված ճարտարապետության գծագրերով և, որտեղ կիրառելի է, ԱԹՍ կամ ավիացիայի գրունտ սեգմենտի միջերեսների դասակարգմամբ։'
+            ),
+            (
+                'open port listener unexpected service exposure bind socket tcp udp process name service guess '
+                'host firewall segmentation bastion administrative plane lateral movement packet capture '
+                'configuration drift persistence malware shadow it inventory ground segment uav interface'
             ),
         ),
         (
-            'Address outdated interpreter packages with known exploit history',
-            'outdated pip package vulnerable dependency supply chain',
+            'Remediate outdated interpreter packages and supply-chain risk in application stacks',
+            'Устранение устаревших пакетов интерпретатора и рисков цепочки поставок в прикладных стеках',
+            'Վերացրեք հնացած ինտերպրետատորի փաթեթները և հավելվածների ստեկերում մատակարարման շղթայի ռիսկը',
+            'outdated pip package vulnerable dependency supply chain cve python',
             (
-                'Create a maintenance window for package upgrades. '
-                'Use isolated test environments before production rollout. '
-                'Pin versions in requirements files after verification. '
-                'Run vulnerability scanners against installed packages regularly. '
-                'Remove unused dependencies to shrink attack surface.'
+                'Stand up a repeatable vulnerability management cadence that pairs software bill of materials review with patch testing in staging environments that mirror production networking constraints. '
+                'Prioritize upgrades for packages with active exploitation intelligence, transitive dependencies that widen blast radius, and anything exposed to untrusted input paths. '
+                'Pin versions only after automated tests and manual smoke checks pass, then propagate changes through your change advisory board workflow. '
+                'Remove dormant dependencies, enable integrity verification on package indexes used offline, and schedule quarterly rescans to catch newly disclosed issues. '
+                'Record risk acceptance decisions with expiry dates so aviation or UAV mission software baselines remain defensible under audit.'
+            ),
+            (
+                'Внедрите повторяемый ритм управления уязвимостями, сочетающий обзор программного состава с тестированием патчей на стендах, повторяющих сетевые ограничения продуктива. '
+                'Приоритизируйте обновления для пакетов с признаками активной эксплуатации, транзитивных зависимостей, расширяющих зону поражения, и всего, что соприкасается с недоверенными входными путями. '
+                'Фиксируйте версии только после успешных автоматических тестов и ручных дымовых проверок, затем проводите изменения через процесс совета по изменениям. '
+                'Удалите неиспользуемые зависимости, включите проверку целостности для офлайн-индексов пакетов и планируйте ежеквартальные пересканирования для новых уязвимостей. '
+                'Фиксируйте решения о принятии риска со сроками действия, чтобы базовые линии ПО для авиации или БПЛА оставались обоснованными при аудите.'
+            ),
+            (
+                'Կառուցեք կրկնվող խոցելիության կառավարման ռիթմ, որը միավորում է ծրագրային կազմի փաստաթղթերի վերանայումը patch-երի փորձարկման հետ՝ փորձարարական միջավայրերում, որոնք կրկնում են արտադրական ցանցի սահմանափակումները։ '
+                'Առաջնահերթություն տվեք թարմացումներին այն փաթեթների համար, որոնք ունեն ակտիվ շահագործման հետախուզություն, տրանզիտիվ կախվածություններ, որոնք ընդլայնում են ազդեցության շրջանակը, և ամեն ինչ, ինչը շփվում է անվստահելի մուտքի ուղիների հետ։ '
+                'Փակեք տարբերակները միայն ավտոմատ թեստերից և ձեռքով ստուգումներից հետո, ապա փոփոխությունները տարածեք փոփոխությունների խորհրդատվական գործընթացով։ '
+                'Հեռացրեք չօգտագործվող կախվածությունները, միացրեք ամբողջականության ստուգումը օֆլայն փաթեթների ինդեքսների համար և եռամսյակային վերասկանավորում պլանավորեք նոր բացահայտված խնդիրների համար։ '
+                'Ռիսկի ընդունման որոշումները գրանցեք ժամկետներով, որպեսզի ավիացիայի կամ ԱԹՍ առաքելության ծրագրային բազային գծերը աուդիտի ժամանակ պաշտպանելի լինեն։'
+            ),
+            (
+                'outdated pip package vulnerable dependency supply chain cve python requirements pin '
+                'staging production parity software bill of materials sbom transitive dependency blast radius '
+                'untrusted input integrity verification offline index quarterly rescan mission software baseline'
             ),
         ),
         (
-            'Remediate world-writable sensitive configuration exposure',
-            'world writable permission sensitive file misconfiguration',
+            'Correct excessive file permissions on sensitive configuration and credential stores',
+            'Исправление избыточных прав доступа к файлам на чувствительных конфигурациях и хранилищах учетных данных',
+            'Ուղղեք զգայուն կոնֆիգուրացիայի և հավատարմագրերի պահոցների վրա ավելցուկային ֆայլային թույլտվությունները',
+            'world writable permission sensitive file misconfiguration acl',
             (
-                'Revoke world write access from sensitive paths. '
-                'Restore vendor-recommended ownership and mode bits. '
-                'Validate integrity using checksum baselines. '
-                'Investigate unauthorized changes via centralized logging. '
-                'Apply configuration management to prevent regression.'
+                'Treat world-writable findings on configuration trees as potential evidence of compromise or negligent automation. '
+                'Immediately snapshot current ACLs and compare them against hardened baselines maintained by your configuration management platform. '
+                'Revoke global write bits, enforce group separation for service accounts, and validate that backup jobs and orchestration agents still function under least privilege. '
+                'Investigate who modified permissions using centralized logging or filesystem auditing, and rotate secrets that might have been exposed while permissions were lax. '
+                'Add automated compliance checks in CI/CD and on-host agents so regressions trigger tickets before UAV or safety-critical workloads restart.'
+            ),
+            (
+                'Рассматривайте находки с правами записи для всех на деревьях конфигурации как потенциальные признаки компрометации или небрежной автоматизации. '
+                'Немедленно снимите снимок текущих ACL и сравните их с ужесточенными базовыми линиями из платформы управления конфигурацией. '
+                'Отзовите глобальные биты записи, обеспечьте разделение групп для сервисных учетных записей и убедитесь, что задания резервного копирования и агенты оркестрации работают при минимальных привилегиях. '
+                'Выясните, кто менял права, используя централизованное журналирование или аудит файловой системы, и смените секреты, которые могли быть раскрыты при слабых правах. '
+                'Добавьте автоматические проверки соответствия в CI/CD и на хостовых агентах, чтобы регрессии создавали заявки до перезапуска нагрузок БПЛА или критичных для безопасности систем.'
+            ),
+            (
+                'Կոնֆիգուրացիայի ծառերի վրա համաշխարհային գրելիության արդյունքները դիտարկեք որպես հնարավոր կոմպրոմետացիայի կամ անուշադրության ավտոմատացման ապացույց։ '
+                'Անմիջապես նկարահանեք ընթացիկ ACL-ները և համեմատեք դրանք ձեր կոնֆիգուրացիայի կառավարման հարթակում պահվող խստացված բազային գծերի հետ։ '
+                'Հանեք համաշխարհային գրելիության բիթերը, կիրառեք խմբային բաժանում ծառայողական հաշիվների համար և հաստատեք, որ կրկնօրինակման աշխատանքները և օրկեստրացիայի գործակալները գործում են նվազագույն արտոնություններով։ '
+                'Հետաքննեք, թե ով է փոխել թույլտվությունները՝ կենտրոնացված մատյանավորման կամ ֆայլային համակարգի աուդիտի միջոցով, և պտտեցրեք գաղտնիքները, որոնք կարող էին բացահայտվել թույլ թույլտվությունների ժամանակ։ '
+                'Ավելացրեք ավտոմատ համապատասխանության ստուգումներ CI/CD-ում և հոսթի գործակալներում, որպեսզի հետխաչերը թիկետներ ստեղծեն մինչ ԱԹՍ կամ անվտանգության կրիտիկական բեռների վերամեկնարկը։'
+            ),
+            (
+                'world writable permission sensitive configuration credential store acl misconfiguration '
+                'least privilege service account backup orchestration centralized logging filesystem audit secret rotation '
+                'compliance check ci cd regression safety critical workload'
             ),
         ),
         (
-            'Investigate suspicious executable integrity anomalies',
-            'hash mismatch suspicious binary unauthorized modification',
+            'Execute structured response to suspicious hash matches and integrity violations',
+            'Выполните структурированный ответ на подозрительные совпадения хешей и нарушения целостности',
+            'Կատարեք կառուցվածքային արձագանք կասկածելի հեշերի համընկնումներին և ամբողջականության խախտումներին',
+            'hash mismatch suspicious binary unauthorized modification yara malware',
             (
-                'Quarantine affected files pending forensic review. '
-                'Compare hashes against trusted distribution sources. '
-                'Rebuild systems from known-good media when integrity fails. '
-                'Hunt related persistence mechanisms across the host. '
-                'Escalate to incident response if malware is confirmed.'
+                'Isolate affected hosts from production VLANs while preserving volatile memory if your policy permits forensic imaging. '
+                'Validate hashes against vendor-published checksums and internal golden images, and escalate to full reimage when discrepancies cannot be explained by approved patching. '
+                'Hunt for lateral movement indicators such as new scheduled tasks, WMI subscriptions, or abnormal service creations tied to the same timeframe. '
+                'Preserve chain-of-custody notes for regulators or airworthiness authorities if the system participates in flight operations support. '
+                'After recovery, reinforce application control policies and deploy continuous integrity monitoring on critical paths.'
+            ),
+            (
+                'Изолируйте затронутые хосты от продуктивных VLAN, сохраняя энергозависимую память, если политика допускает форензическое образование. '
+                'Сверяйте хеши с опубликованными контрольными суммами вендоров и внутренними эталонными образами, и переходите к полной переустановке, когда расхождения нельзя объяснить утвержденными патчами. '
+                'Ищите признаки горизонтального перемещения: новые запланированные задания, подписки WMI или подозрительное создание служб в тот же период. '
+                'Сохраняйте заметки о цепочке хранения для регуляторов или органов летной годности, если система участвует в поддержке полетных операций. '
+                'После восстановления усильте политики контроля приложений и внедрите непрерывный мониторинг целостности на критических путях.'
+            ),
+            (
+                'Առանձնացրեք տուժած հոսթերը արտադրական VLAN-ներից՝ պահելով անկայուն հիշողությունը, եթե քաղաքականությունը թույլ է տալիս դատաբժշկական պատկերացում։ '
+                'Հաստատեք հեշերը վաճառողի հրապարակված checksum-ների և ներքին ոսկե պատկերների դեմ, և անցեք լրիվ վերատեղադրման, երբ տարաձայնությունները չեն բացատրվում հաստատված patch-երով։ '
+                'Որոնեք լայնակի տեղաշարժի ցուցանիշներ՝ նոր պլանավորված առաջադրանքներ, WMI բաժանորդագրություններ կամ անսովոր ծառայությունների ստեղծումներ նույն ժամանակահատվածում։ '
+                'Պահպանեք պահպանման շղթայի նշումները կարգավորողների կամ թռիչքի պատրաստության մարմինների համար, եթե համակարգը մասնակցում է թռիչքային գործողությունների աջակցությանը։ '
+                'Վերականգնումից հետո ուժեղացրեք հավելվածների վերահսկողության քաղաքականությունները և տեղադրեք անընդհատ ամբողջականության մոնիտորինգ կրիտիկական ուղիներում։'
+            ),
+            (
+                'hash mismatch suspicious binary unauthorized modification yara malware quarantine forensic '
+                'golden image vendor checksum lateral movement scheduled task wmi subscription service creation '
+                'chain of custody airworthiness flight operations application control continuous integrity monitoring'
             ),
         ),
         (
-            'Recover from critical system service termination events',
-            'service stopped unexpectedly event id crash termination',
+            'Restore reliability after critical service crashes and unexpected terminations',
+            'Восстановите надежность после критических сбоев служб и неожиданных завершений',
+            'Վերականգնեք հուսալիությունը կրիտիկական ծառայության վթարներից և անսպասելի ավարտներից հետո',
+            'service stopped unexpectedly event id crash termination timeout',
             (
-                'Collect supporting logs around the failure window. '
-                'Validate dependent resources such as storage and networking. '
-                'Apply vendor patches addressing the faulting component. '
-                'Increase resilience using supervised restarts and health checks. '
-                'Document root cause and monitoring improvements.'
+                'Assemble a timeline that stitches together operating system logs, hypervisor events, and hardware telemetry covering five minutes before and after the fault. '
+                'Validate dependencies such as storage latency, DNS resolution, and certificate expiration that commonly cascade into service termination. '
+                'Apply vendor-recommended hotfixes, increase watchdog sensitivity with sane restart policies, and load-test the service under simulated peak traffic. '
+                'Document the root cause, residual risks, and monitoring gaps in your knowledge base so on-call engineers can recognize recurrence quickly. '
+                'For aviation datalink or UAV ground services, align recovery testing with maintenance windows governed by your continuing airworthiness program.'
+            ),
+            (
+                'Соберите временную шкалу, объединяющую журналы ОС, события гипервизора и аппаратную телеметрию за пять минут до и после сбоя. '
+                'Проверьте зависимости вроде задержек хранилища, разрешения DNS и истечения сертификатов, которые часто каскадно приводят к завершению службы. '
+                'Примените рекомендованные вендором исправления, повысьте чувствительность сторожевых таймеров с разумной политикой перезапуска и нагрузочно протестируйте службу при пиковом трафике. '
+                'Задокументируйте первопричину, остаточные риски и пробелы мониторинга в базе знаний, чтобы дежурные инженеры быстро распознали повтор. '
+                'Для авиационных каналов данных или наземных сервисов БПЛА согласуйте тесты восстановления с техническими окнами в рамках программы поддержания летной годности.'
+            ),
+            (
+                'Ժամանակագրություն կազմեք, որը միավորում է օՀ մատյանները, հիպերվիզորի իրադարձությունները և ապարատային հեռաչափությունը վթարից հինգ րոպե առաջ և հետո։ '
+                'Ստուգեք կախվածությունները, ինչպիսիք են պահեստի ուշացումը, DNS-ի լուծումը և վկայագրի ժամկետի ավարտը, որոնք հաճախ շղթայակապ են հանգեցնում ծառայության ավարտին։ '
+                'Կիրառեք վաճառողի խորհուրդ տված շտկումները, բարձրացրեք պահակային տայմերների զգայունությունը՝ ուղղակի վերամեկնարկի քաղաքականությամբ, և բեռնվածության թեստավորեք ծառայությունը գագաթնային տրաֆիկի սիմուլյացիայով։ '
+                'Փաստագրեք արմատային պատճառը, մնացորդային ռիսկերը և մոնիտորինգի բացերը ձեր գիտելիքների բազայում, որպեսզի հերթապահ ինժեներները արագ ճանաչեն կրկնությունը։ '
+                'Ավիացիայի տվյալների կապի կամ ԱԹՍ գրունտ ծառայությունների համար համաձայնեցրեք վերականգնման թեստերը տեխնիկական պատուհանների հետ՝ ձեր շարունակական թռիչքի պատրաստության ծրագրի շրջանակներում։'
+            ),
+            (
+                'service stopped unexpectedly event id crash termination timeout service control manager '
+                'application fault access violation memory fault storage latency dns certificate expiration '
+                'watchdog restart load test root cause monitoring gap datalink uav ground service airworthiness maintenance window'
             ),
         ),
     ]
-    for title, symptoms, steps in remediation_payloads:
+    insert_sql = (
+        'INSERT INTO remediations ('
+        'title_en, title_ru, title_hy, mapped_symptoms, steps_en, steps_ru, steps_hy, nlp_baseline_en'
+        ') VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    )
+    for payload_tuple in remediation_payloads:
+        title_en, title_ru, title_hy, symptoms, se, sr, sh, nlp_en = payload_tuple
         cursor.execute(
-            'INSERT INTO remediations (title, mapped_symptoms, resolution_steps) VALUES (?, ?, ?)',
-            (title, symptoms, steps),
+            insert_sql,
+            (title_en, title_ru, title_hy, symptoms, se, sr, sh, nlp_en),
         )
     cursor.execute(
-        'SELECT remediation_id FROM remediations WHERE title LIKE ?',
-        ('%authentication service%',),
+        'SELECT remediation_id FROM remediations WHERE title_en LIKE ?',
+        ('%identity services%',),
     )
     auth_row = cursor.fetchone()
     auth_remediation_id = auth_row[0] if auth_row else 1
     cursor.execute(
-        'SELECT remediation_id FROM remediations WHERE title LIKE ?',
-        ('%listener exposure%',),
+        'SELECT remediation_id FROM remediations WHERE title_en LIKE ?',
+        ('%network listener%',),
     )
     port_row = cursor.fetchone()
     port_remediation_id = port_row[0] if port_row else 2
     cursor.execute(
-        'SELECT remediation_id FROM remediations WHERE title LIKE ?',
-        ('%outdated interpreter%',),
+        'SELECT remediation_id FROM remediations WHERE title_en LIKE ?',
+        ('%interpreter packages%',),
     )
     pkg_row = cursor.fetchone()
     pkg_remediation_id = pkg_row[0] if pkg_row else 3
     cursor.execute(
-        'SELECT remediation_id FROM remediations WHERE title LIKE ?',
-        ('%world-writable%',),
+        'SELECT remediation_id FROM remediations WHERE title_en LIKE ?',
+        ('%file permissions%',),
     )
     perm_row = cursor.fetchone()
     perm_remediation_id = perm_row[0] if perm_row else 4
     cursor.execute(
-        'SELECT remediation_id FROM remediations WHERE title LIKE ?',
-        ('%integrity anomalies%',),
+        'SELECT remediation_id FROM remediations WHERE title_en LIKE ?',
+        ('%hash matches%',),
     )
     hash_row = cursor.fetchone()
     hash_remediation_id = hash_row[0] if hash_row else 5
     cursor.execute(
-        'SELECT remediation_id FROM remediations WHERE title LIKE ?',
-        ('%service termination%',),
+        'SELECT remediation_id FROM remediations WHERE title_en LIKE ?',
+        ('%service crashes%',),
     )
     crash_row = cursor.fetchone()
     crash_remediation_id = crash_row[0] if crash_row else 6

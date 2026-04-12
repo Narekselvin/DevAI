@@ -24,7 +24,10 @@ def execute_audit_and_return_payload():
     if request_payload is None:
         request_payload = {}
     subnet_candidate = request_payload.get('subnet')
-    audit_command_tokens = [sys.executable, str(main_script_path), 'audit']
+    language_candidate = request_payload.get('language')
+    if language_candidate not in ('en', 'ru', 'hy'):
+        language_candidate = 'en'
+    audit_command_tokens = [sys.executable, str(main_script_path), 'audit', '--lang', language_candidate]
     if isinstance(subnet_candidate, str):
         trimmed_subnet_value = subnet_candidate.strip()
         if trimmed_subnet_value:
