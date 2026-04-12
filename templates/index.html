@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System Audit Command Center</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="loading-overlay" class="loading-overlay hidden" aria-hidden="true">
+<div class="loading-backdrop"></div>
+<div class="loading-panel">
+<div class="spinner" role="progressbar" aria-label="Running audit"></div>
+<p class="loading-message">Running network audit pipeline</p>
+</div>
+</div>
+<div class="app-shell">
+<header class="top-bar">
+<div class="brand-block">
+<div class="brand-mark"></div>
+<div class="brand-text">
+<span class="brand-title">Infrastructure Observability</span>
+<span class="brand-subtitle">Local System Audit Intelligence</span>
+</div>
+</div>
+<div class="top-bar-actions">
+<input type="text" id="subnet-input" class="subnet-input" placeholder="Enter Subnet (e.g., 192.168.1.0/24) - Optional" autocomplete="off" spellcheck="false">
+<button type="button" id="run-audit-button" class="primary-action">Run Network Audit</button>
+</div>
+</header>
+<main class="main-canvas">
+<section class="panel status-panel">
+<div class="panel-heading">
+<h2>Status Overview</h2>
+<span id="audit-timestamp" class="muted-chip"></span>
+</div>
+<div class="stat-grid">
+<div class="stat-card">
+<div class="stat-label">Active IPs</div>
+<div id="stat-active-ips" class="stat-value">0</div>
+<div class="stat-hint">Unique bind addresses</div>
+</div>
+<div class="stat-card">
+<div class="stat-label">Open Ports</div>
+<div id="stat-open-ports" class="stat-value">0</div>
+<div class="stat-hint">Listening sockets</div>
+</div>
+<div class="stat-card">
+<div class="stat-label">Outdated Packages</div>
+<div id="stat-outdated-packages" class="stat-value">0</div>
+<div class="stat-hint">Python pip report</div>
+</div>
+</div>
+</section>
+<section class="panel table-panel">
+<div class="panel-heading">
+<h2>Discovered Network Assets</h2>
+<span id="asset-row-count" class="muted-chip"></span>
+</div>
+<div class="table-scroll">
+<table class="data-table" id="assets-table">
+<thead>
+<tr>
+<th>IP Address</th>
+<th>Port</th>
+<th>Protocol</th>
+<th>Guessed Service</th>
+<th>Process</th>
+</tr>
+</thead>
+<tbody id="assets-table-body">
+</tbody>
+</table>
+</div>
+</section>
+<section class="panel remediation-panel">
+<div class="panel-heading">
+<h2>AI Remediation Plan</h2>
+<span id="remediation-count" class="muted-chip"></span>
+</div>
+<div id="remediation-grid" class="remediation-grid">
+</div>
+</section>
+<section id="error-banner" class="error-banner hidden" role="alert"></section>
+</main>
+<footer class="app-footer">
+<span class="footer-note">Powered by local TF-IDF similarity matching against sysadmin_knowledge.db</span>
+</footer>
+</div>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
