@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Network Audit</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body{margin:0;background:#0b1220;color:#e5e7eb;font-family:Arial,sans-serif}
+    .top{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #1f2937;background:#111827;position:sticky;top:0}
+    .left{display:flex;gap:10px;align-items:center}
+    .brand{font-weight:900}
+    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    input,select,button{border:1px solid #334155;background:#0b1220;color:#e5e7eb;border-radius:10px;padding:10px 12px}
+    button{background:#2563eb;border-color:#2563eb;cursor:pointer}
+    .container{max-width:1200px;margin:0 auto;padding:18px;display:grid;gap:14px}
+    .panel{background:#111827;border:1px solid #1f2937;border-radius:14px;padding:14px}
+    table{width:100%;border-collapse:collapse}
+    th,td{border-bottom:1px solid #1f2937;text-align:left;padding:8px;font-size:14px}
+    .muted{color:#94a3b8}
+    pre{white-space:pre-wrap;background:#0b1220;border:1px solid #1f2937;border-radius:12px;padding:12px;overflow:auto}
+  </style>
+</head>
+<body data-page="audit">
+  <div class="top">
+    <div class="left">
+      <a href="/" style="color:#e5e7eb;text-decoration:none" data-i18n="backToLanding">Back</a>
+      <div class="brand" data-i18n="auditTitle">Network Audit</div>
+    </div>
+    <div class="controls">
+      <select id="language-select">
+        <option value="en">English</option>
+        <option value="ru">Русский</option>
+        <option value="hy">Հայերեն</option>
+      </select>
+      <input id="subnet-input" type="text" placeholder="192.168.1.0/24">
+      <button id="run-audit-button" data-i18n="runAudit">Run Audit</button>
+    </div>
+  </div>
+  <div class="container">
+    <div class="panel">
+      <div class="muted" data-i18n="auditHint">Safe whitelist ports are ignored by default; only anomalies are listed.</div>
+    </div>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div data-i18n="anomalousPorts">Anomalous Open Ports</div>
+        <div id="anomaly-count" class="muted">0</div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="ip">IP</th>
+            <th data-i18n="port">Port</th>
+            <th data-i18n="protocol">Protocol</th>
+            <th data-i18n="service">Service</th>
+            <th data-i18n="process">Process</th>
+          </tr>
+        </thead>
+        <tbody id="network-table-body"></tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <div data-i18n="aiRemediation">AI Remediation Plan</div>
+      <div id="remediation-list" class="muted"></div>
+    </div>
+    <div class="panel">
+      <div data-i18n="rawPayload">Raw Payload</div>
+      <pre id="audit-raw" class="muted"></pre>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

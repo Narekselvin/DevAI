@@ -3,3 +3,4 @@ scikit-learn>=1.3.0
 numpy>=1.24.0
 yara-python>=4.3.0
 flask>=3.0.0
+pysnmp>=6.2.6

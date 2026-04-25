@@ -67,7 +67,57 @@ def initialize_schema(connection):
         'FOREIGN KEY (remediation_id) REFERENCES remediations(remediation_id)'
         ')'
     )
+    connection.execute(
+        'CREATE TABLE IF NOT EXISTS hardware_playbooks ('
+        'playbook_id INTEGER PRIMARY KEY AUTOINCREMENT,'
+        'issue_key TEXT UNIQUE NOT NULL,'
+        'title_en TEXT NOT NULL,'
+        'title_ru TEXT NOT NULL,'
+        'title_hy TEXT NOT NULL,'
+        'symptoms_en TEXT NOT NULL,'
+        'remediation_en TEXT NOT NULL,'
+        'remediation_ru TEXT NOT NULL,'
+        'remediation_hy TEXT NOT NULL,'
+        'nlp_baseline_en TEXT NOT NULL'
+        ')'
+    )
+    connection.execute(
+        'CREATE TABLE IF NOT EXISTS hosts ('
+        'id INTEGER PRIMARY KEY AUTOINCREMENT,'
+        'hostname TEXT NOT NULL,'
+        'ip_address TEXT NOT NULL UNIQUE,'
+        'device_type TEXT NOT NULL,'
+        'date_added TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP'
+        ')'
+    )
+    connection.execute(
+        'CREATE TABLE IF NOT EXISTS metrics_history ('
+        'id INTEGER PRIMARY KEY AUTOINCREMENT,'
+        'host_id INTEGER NOT NULL,'
+        'status TEXT NOT NULL,'
+        'cpu_utilization INTEGER NOT NULL,'
+        'ram_usage INTEGER NOT NULL,'
+        'disk_usage INTEGER NOT NULL,'
+        'temperature_c INTEGER NOT NULL,'
+        'mock_data INTEGER NOT NULL,'
+        'polled_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,'
+        'FOREIGN KEY (host_id) REFERENCES hosts(id)'
+        ')'
+    )
+    _ensure_hardware_playbooks_script_column(connection)
     connection.commit()
+
+
+def _ensure_hardware_playbooks_script_column(connection):
+    cursor = connection.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='hardware_playbooks'")
+    if cursor.fetchone() is None:
+        return
+    cursor.execute('PRAGMA table_info(hardware_playbooks)')
+    column_names = {row[1] for row in cursor.fetchall()}
+    if 'remediation_script' not in column_names:
+        connection.execute("ALTER TABLE hardware_playbooks ADD COLUMN remediation_script TEXT NOT NULL DEFAULT ''")
+        connection.commit()
 
 
 def seed_sample_manual_entries(connection):
@@ -383,6 +433,62 @@ def seed_sample_manual_entries(connection):
         cursor.execute(
             'INSERT INTO known_vulnerabilities (identifier, summary, severity, remediation_id) VALUES (?, ?, ?, ?)',
             (identifier, summary, severity, remediation_id),
+        )
+    hardware_rows = [
+        (
+            'HIGH_TEMP',
+            'Critical Device Temperature',
+            'Критическая температура устройства',
+            'Կրիտիկական ջերմաստիճան սարքի վրա',
+            'temperature above threshold, fan degradation, airflow blockage, thermal stress',
+            'Temperature is critical. Verify rack airflow, clean dust filters, inspect fans, and replace thermal paste where needed.',
+            'Температура критическая. Проверьте воздушный поток в стойке, очистите фильтры, проверьте вентиляторы и при необходимости замените термопасту.',
+            'Ջերմաստիճանը կրիտիկական է։ Ստուգեք դարակների օդահոսքը, մաքրեք փոշու ֆիլտրերը, ստուգեք հովացուցիչները և անհրաժեշտության դեպքում փոխարինեք թերմոպաստան։',
+            'high temperature thermal stress fan failure airflow dust thermal paste replacement cooling remediation',
+            'echo \"Verify fans and airflow; schedule hardware maintenance\"',
+        ),
+        (
+            'DISK_FULL',
+            'Disk Capacity Exhaustion',
+            'Переполнение дискового пространства',
+            'Սկավառակի տարողության սպառում',
+            'disk usage above 95 percent, capacity exhaustion, write failure risk',
+            'Disk usage is critical. Clear obsolete logs, expand storage, and rebalance data across nodes.',
+            'Использование диска критическое. Очистите устаревшие логи, расширьте хранилище и перераспределите данные по узлам.',
+            'Սկավառակի օգտագործումը կրիտիկական է։ Մաքրեք հնացած լոգերը, ընդլայնեք պահեստը և վերաբաշխեք տվյալները հանգույցների միջև։',
+            'disk full capacity critical storage expansion data rebalance cleanup logs',
+            'rm -rf /tmp/*',
+        ),
+        (
+            'HIGH_CPU',
+            'Sustained High CPU Utilization',
+            'Устойчиво высокая загрузка CPU',
+            'Կայուն բարձր CPU բեռ',
+            'cpu above 85 percent, compute saturation, workload pressure',
+            'CPU utilization is elevated. Scale workloads horizontally, tune background jobs, and optimize hot queries.',
+            'Загрузка CPU повышена. Масштабируйте нагрузки горизонтально, оптимизируйте фоновые задачи и горячие запросы.',
+            'CPU բեռը բարձր է։ Մասշտաբավորեք բեռները հորիզոնական, օպտիմիզացրեք ֆոնային առաջադրանքները և ծանր հարցումները։',
+            'high cpu utilization compute saturation workload scale out performance tuning query optimization',
+            'Restart-Service -Name W3SVC',
+        ),
+        (
+            'OFFLINE',
+            'Device Offline',
+            'Устройство недоступно',
+            'Սարքը անհասանելի է',
+            'device offline, unreachable host, network path failure, power outage',
+            'Device is offline. Verify power state, switch uplink, and management network reachability.',
+            'Устройство недоступно. Проверьте питание, аплинк коммутатора и доступность управляющей сети.',
+            'Սարքը անհասանելի է։ Ստուգեք սնուցումը, սվիչի uplink-ը և կառավարման ցանցի հասանելիությունը։',
+            'offline device unreachable host network outage power remediation recovery',
+            'ping -c 2 127.0.0.1',
+        ),
+    ]
+    for row in hardware_rows:
+        cursor.execute(
+            'INSERT OR IGNORE INTO hardware_playbooks (issue_key, title_en, title_ru, title_hy, symptoms_en, remediation_en, remediation_ru, remediation_hy, nlp_baseline_en, remediation_script) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            row,
         )
     connection.commit()
 

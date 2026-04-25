@@ -1,146 +1,157 @@
 (function () {
   const UI_STRINGS = {
     en: {
-      brandTitle: 'Infrastructure Observability',
-      brandSubtitle: 'Local System Audit Intelligence',
-      languageLabel: 'Language',
-      subnetPlaceholder: 'Enter Subnet (e.g., 192.168.1.0/24) - Optional',
-      runAudit: 'Run Network Audit',
-      loadingMessage: 'Running network audit pipeline',
-      loadingAria: 'Running audit',
-      statusOverview: 'Status Overview',
-      statActiveIps: 'Active IPs',
-      statOpenPorts: 'Open Ports',
-      statOutdatedPackages: 'Outdated Packages',
-      statHintBind: 'Unique bind addresses',
-      statHintSockets: 'Listening sockets',
-      statHintPip: 'Python pip report',
-      networkAssets: 'Discovered Network Assets',
-      colIp: 'IP Address',
-      colPort: 'Port',
-      colProtocol: 'Protocol',
-      colService: 'Guessed Service',
-      colProcess: 'Process',
+      landingAuditTitle: 'Network Audit',
+      landingAuditSubtitle: 'Run smart scanning with noise reduction and AI remediation',
+      landingMonitoringTitle: 'Infrastructure Monitoring',
+      landingMonitoringSubtitle: 'Zabbix-style observability with hosts, live metrics, and AI decisions',
+      backToLanding: 'Back',
+      runAudit: 'Run Audit',
+      auditTitle: 'Network Audit',
+      auditHint: 'Safe whitelist ports are ignored by default; only anomalies are listed.',
+      anomalousPorts: 'Anomalous Open Ports',
+      rawPayload: 'Raw Payload',
       aiRemediation: 'AI Remediation Plan',
-      footerNote: 'Powered by local TF-IDF similarity matching against sysadmin_knowledge.db',
-      lastRunPrefix: 'Last run:',
-      aiConfidence: 'AI Confidence',
-      remediationFallbackTitle: 'Remediation item',
-      emptySocketsMessage: 'No listening sockets were returned by the scanner.',
-      emptyRemediationMessage: 'No remediation matches were produced.',
-      endpointsCount: '{n} endpoints',
-      recommendationsCount: '{n} recommendations',
-      errorInvalidJson: 'The server returned data that is not valid JSON.',
-      errorUnexpectedEmpty: 'Unexpected empty response from audit service.',
-      errorNetwork: 'Network error while contacting the audit API.',
+      monitoringTitle: 'Infrastructure Monitoring',
+      monitoringSidebarHint: 'Add hosts, poll metrics, then review AI trend decisions.',
+      menuHosts: 'Hosts',
+      menuLive: 'Live Dashboard',
+      menuAi: 'AI Decisions',
+      hostsTitle: 'Hosts',
+      liveTitle: 'Live Dashboard',
+      aiDecisionsTitle: 'AI Decisions',
+      refresh: 'Refresh',
+      pollNow: 'Poll Now',
+      addHost: 'Add',
+      updateHost: 'Update',
+      clear: 'Clear',
+      deviceServer: 'Server',
+      deviceSwitch: 'Switch',
+      deviceVm: 'VM',
+      deviceType: 'Device Type',
+      dateAdded: 'Date Added',
+      actions: 'Actions',
+      status: 'Status',
+      polledAt: 'Polled At',
+      ip: 'IP',
+      port: 'Port',
+      protocol: 'Protocol',
+      service: 'Service',
+      process: 'Process',
+      hostname: 'Hostname',
+      cpu: 'CPU %',
+      ram: 'RAM %',
+      disk: 'Disk %',
+      temp: 'Temp C',
+      delete: 'Delete',
+      edit: 'Edit',
+      noData: 'No data'
     },
     ru: {
-      brandTitle: 'Наблюдаемость инфраструктуры',
-      brandSubtitle: 'Локальный интеллект аудита системы',
-      languageLabel: 'Язык',
-      subnetPlaceholder: 'Подсеть (например, 192.168.1.0/24) — необязательно',
-      runAudit: 'Запустить сетевой аудит',
-      loadingMessage: 'Выполняется конвейер сетевого аудита',
-      loadingAria: 'Выполняется аудит',
-      statusOverview: 'Обзор состояния',
-      statActiveIps: 'Активные IP',
-      statOpenPorts: 'Открытые порты',
-      statOutdatedPackages: 'Устаревшие пакеты',
-      statHintBind: 'Уникальные адреса привязки',
-      statHintSockets: 'Прослушивающие сокеты',
-      statHintPip: 'Отчёт pip (Python)',
-      networkAssets: 'Обнаруженные сетевые активы',
-      colIp: 'IP-адрес',
-      colPort: 'Порт',
-      colProtocol: 'Протокол',
-      colService: 'Предполагаемый сервис',
-      colProcess: 'Процесс',
+      landingAuditTitle: 'Сетевой аудит',
+      landingAuditSubtitle: 'Умное сканирование с подавлением шума и ИИ-устранением',
+      landingMonitoringTitle: 'Мониторинг инфраструктуры',
+      landingMonitoringSubtitle: 'Наблюдаемость в стиле Zabbix: хосты, метрики, решения ИИ',
+      backToLanding: 'Назад',
+      runAudit: 'Запустить аудит',
+      auditTitle: 'Сетевой аудит',
+      auditHint: 'Безопасные порты из белого списка скрываются; отображаются только аномалии.',
+      anomalousPorts: 'Аномальные открытые порты',
+      rawPayload: 'Сырой ответ',
       aiRemediation: 'План ИИ-устранения',
-      footerNote: 'На основе локального сопоставления TF-IDF с sysadmin_knowledge.db',
-      lastRunPrefix: 'Последний запуск:',
-      aiConfidence: 'Уверенность ИИ',
-      remediationFallbackTitle: 'Элемент устранения',
-      emptySocketsMessage: 'Сканер не вернул прослушивающие сокеты.',
-      emptyRemediationMessage: 'Рекомендации по устранению не сформированы.',
-      endpointsCount: '{n} конечных точек',
-      recommendationsCount: '{n} рекомендаций',
-      errorInvalidJson: 'Сервер вернул данные, которые не являются допустимым JSON.',
-      errorUnexpectedEmpty: 'Пустой или неожиданный ответ службы аудита.',
-      errorNetwork: 'Сетевая ошибка при обращении к API аудита.',
+      monitoringTitle: 'Мониторинг инфраструктуры',
+      monitoringSidebarHint: 'Добавьте хосты, опросите метрики, затем проверьте трендовые решения ИИ.',
+      menuHosts: 'Хосты',
+      menuLive: 'Живой дашборд',
+      menuAi: 'Решения ИИ',
+      hostsTitle: 'Хосты',
+      liveTitle: 'Живой дашборд',
+      aiDecisionsTitle: 'Решения ИИ',
+      refresh: 'Обновить',
+      pollNow: 'Опросить',
+      addHost: 'Добавить',
+      updateHost: 'Обновить',
+      clear: 'Очистить',
+      deviceServer: 'Сервер',
+      deviceSwitch: 'Коммутатор',
+      deviceVm: 'ВМ',
+      deviceType: 'Тип устройства',
+      dateAdded: 'Добавлено',
+      actions: 'Действия',
+      status: 'Статус',
+      polledAt: 'Время опроса',
+      ip: 'IP',
+      port: 'Порт',
+      protocol: 'Протокол',
+      service: 'Сервис',
+      process: 'Процесс',
+      hostname: 'Имя хоста',
+      cpu: 'CPU %',
+      ram: 'RAM %',
+      disk: 'Disk %',
+      temp: 'Темп C',
+      delete: 'Удалить',
+      edit: 'Редактировать',
+      noData: 'Нет данных'
     },
     hy: {
-      brandTitle: 'Ենթակառուցվածքի դիտարկում',
-      brandSubtitle: 'Տեղական համակարգի աուդիտի հետախուզություն',
-      languageLabel: 'Լեզու',
-      subnetPlaceholder: 'Ենթացանց (օր․ 192.168.1.0/24) — ընտրովի',
-      runAudit: 'Գործարկել ցանցային աուդիտ',
-      loadingMessage: 'Կատարվում է ցանցային աուդիտի խողովակ',
-      loadingAria: 'Կատարվում է աուդիտ',
-      statusOverview: 'Կարգավիճակի ամփոփում',
-      statActiveIps: 'Ակտիվ IP-ներ',
-      statOpenPorts: 'Բաց պորտեր',
-      statOutdatedPackages: 'Հնացած փաթեթներ',
-      statHintBind: 'Եզակի կապման հասցեներ',
-      statHintSockets: 'Լսող սոկետներ',
-      statHintPip: 'Python pip հաշվետվություն',
-      networkAssets: 'Հայտնաբերված ցանցային ակտիվներ',
-      colIp: 'IP հասցե',
-      colPort: 'Պորտ',
-      colProtocol: 'Պրոտոկոլ',
-      colService: 'Գուշակված ծառայություն',
-      colProcess: 'Գործընթաց',
-      aiRemediation: 'ՁԻ վերականգնման պլան',
-      footerNote: 'Տեղական TF-IDF նմանության համապատասխանություն sysadmin_knowledge.db-ի հետ',
-      lastRunPrefix: 'Վերջին գործարկումը՝',
-      aiConfidence: 'ՁԻ վստահություն',
-      remediationFallbackTitle: 'Վերականգնման տարր',
-      emptySocketsMessage: 'Սկաները չի վերադարձրել լսող սոկետներ։',
-      emptyRemediationMessage: 'Վերականգնման համընկնումներ չեն ստացվել։',
-      endpointsCount: '{n} կետ',
-      recommendationsCount: '{n} առաջարկ',
-      errorInvalidJson: 'Սերվերը վերադարձրեց JSON չհանդիսացող տվյալներ։',
-      errorUnexpectedEmpty: 'Աուդիտի ծառայությունից անսպասելի դատարկ պատասխան։',
-      errorNetwork: 'Ցանցային սխալ API-ին դիմելիս։',
+      landingAuditTitle: 'Ցանցային աուդիտ',
+      landingAuditSubtitle: 'Խելացի սկանավորում՝ աղմուկի նվազեցմամբ և AI վերականգնմամբ',
+      landingMonitoringTitle: 'Ենթակառուցվածքի մոնիտորինգ',
+      landingMonitoringSubtitle: 'Zabbix ոճի դիտարկում՝ հոսթեր, մետրիկներ, AI որոշումներ',
+      backToLanding: 'Հետ',
+      runAudit: 'Գործարկել աուդիտ',
+      auditTitle: 'Ցանցային աուդիտ',
+      auditHint: 'Անվտանգ պորտերը թաքցվում են լռելյայն, ցուցադրվում են միայն անոմալիաները։',
+      anomalousPorts: 'Անոմալ բաց պորտեր',
+      rawPayload: 'Հում պատասխան',
+      aiRemediation: 'AI վերականգնման պլան',
+      monitoringTitle: 'Ենթակառուցվածքի մոնիտորինգ',
+      monitoringSidebarHint: 'Ավելացրեք հոսթեր, հարցեք մետրիկները, ապա դիտեք AI միտումային որոշումները։',
+      menuHosts: 'Հոսթեր',
+      menuLive: 'Կենդանի վահանակ',
+      menuAi: 'AI որոշումներ',
+      hostsTitle: 'Հոսթեր',
+      liveTitle: 'Կենդանի վահանակ',
+      aiDecisionsTitle: 'AI որոշումներ',
+      refresh: 'Թարմացնել',
+      pollNow: 'Հարցում',
+      addHost: 'Ավելացնել',
+      updateHost: 'Թարմացնել',
+      clear: 'Մաքրել',
+      deviceServer: 'Սերվեր',
+      deviceSwitch: 'Սվիչ',
+      deviceVm: 'VM',
+      deviceType: 'Սարքի տեսակ',
+      dateAdded: 'Ավելացված է',
+      actions: 'Գործողություններ',
+      status: 'Կարգավիճակ',
+      polledAt: 'Հարցման ժամ',
+      ip: 'IP',
+      port: 'Պորտ',
+      protocol: 'Պրոտոկոլ',
+      service: 'Ծառայություն',
+      process: 'Գործընթաց',
+      hostname: 'Հոսթի անուն',
+      cpu: 'CPU %',
+      ram: 'RAM %',
+      disk: 'Disk %',
+      temp: 'Ջերմ C',
+      delete: 'Ջնջել',
+      edit: 'Խմբագրել',
+      noData: 'Տվյալներ չկան'
     },
   };
 
   const STORAGE_KEY = 'audit_ui_lang';
   let currentLanguage = 'en';
 
-  const runAuditButton = document.getElementById('run-audit-button');
-  const subnetInput = document.getElementById('subnet-input');
   const languageSelect = document.getElementById('language-select');
-  const loadingOverlay = document.getElementById('loading-overlay');
-  const statActiveIps = document.getElementById('stat-active-ips');
-  const statOpenPorts = document.getElementById('stat-open-ports');
-  const statOutdatedPackages = document.getElementById('stat-outdated-packages');
-  const auditTimestamp = document.getElementById('audit-timestamp');
-  const assetsTableBody = document.getElementById('assets-table-body');
-  const assetRowCount = document.getElementById('asset-row-count');
-  const remediationGrid = document.getElementById('remediation-grid');
-  const remediationCount = document.getElementById('remediation-count');
-  const errorBanner = document.getElementById('error-banner');
-
-  function getLocaleTag() {
-    if (currentLanguage === 'ru') {
-      return 'ru-RU';
-    }
-    if (currentLanguage === 'hy') {
-      return 'hy-AM';
-    }
-    return 'en-US';
-  }
+  const pageName = document.body ? document.body.getAttribute('data-page') : '';
 
   function t(key) {
     const pack = UI_STRINGS[currentLanguage] || UI_STRINGS.en;
-    if (Object.prototype.hasOwnProperty.call(pack, key)) {
-      return pack[key];
-    }
-    return UI_STRINGS.en[key] || key;
-  }
-
-  function formatNamed(template, n) {
-    return String(template).replace('{n}', String(n));
+    return Object.prototype.hasOwnProperty.call(pack, key) ? pack[key] : UI_STRINGS.en[key] || key;
   }
 
   function applyI18nToDom() {
@@ -152,20 +163,6 @@
         return;
       }
       el.textContent = t(key);
-    });
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
-      const key = el.getAttribute('data-i18n-placeholder');
-      if (!key) {
-        return;
-      }
-      el.placeholder = t(key);
-    });
-    document.querySelectorAll('[data-i18n-aria-label]').forEach(function (el) {
-      const key = el.getAttribute('data-i18n-aria-label');
-      if (!key) {
-        return;
-      }
-      el.setAttribute('aria-label', t(key));
     });
   }
 
@@ -199,236 +196,258 @@
     });
   }
 
-  function getRequestLanguage() {
-    return currentLanguage === 'ru' || currentLanguage === 'hy' ? currentLanguage : 'en';
-  }
-
-  function setLoadingState(isLoading) {
-    if (isLoading) {
-      loadingOverlay.classList.remove('hidden');
-      loadingOverlay.setAttribute('aria-hidden', 'false');
-      runAuditButton.disabled = true;
-      if (subnetInput) {
-        subnetInput.disabled = true;
-      }
-      if (languageSelect) {
-        languageSelect.disabled = true;
-      }
-    } else {
-      loadingOverlay.classList.add('hidden');
-      loadingOverlay.setAttribute('aria-hidden', 'true');
-      runAuditButton.disabled = false;
-      if (subnetInput) {
-        subnetInput.disabled = false;
-      }
-      if (languageSelect) {
-        languageSelect.disabled = false;
-      }
-    }
-  }
-
-  function hideError() {
-    errorBanner.classList.add('hidden');
-    errorBanner.textContent = '';
-  }
-
-  function showError(messageText) {
-    errorBanner.textContent = messageText;
-    errorBanner.classList.remove('hidden');
-  }
-
-  function countUniqueIps(socketRows) {
-    const uniqueValues = new Set();
-    socketRows.forEach(function (row) {
-      if (row && Object.prototype.hasOwnProperty.call(row, 'ip')) {
-        uniqueValues.add(String(row.ip));
-      }
+  async function jsonFetch(url, method, payload) {
+    const res = await fetch(url, {
+      method: method || 'GET',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: payload ? JSON.stringify(payload) : undefined,
     });
-    return uniqueValues.size;
+    const body = await res.json();
+    return { ok: res.ok, status: res.status, body: body };
   }
 
-  function formatConfidencePercent(similarityScore) {
-    const numericValue = Number(similarityScore);
-    if (!Number.isFinite(numericValue)) {
-      return '0%';
-    }
-    const scaled = Math.round(numericValue * 1000) / 10;
-    return String(scaled) + '%';
+  function clearElement(el) {
+    if (!el) return;
+    while (el.firstChild) el.removeChild(el.firstChild);
   }
 
-  function renderOverview(socketRows, outdatedPackagesList) {
-    const openPortCount = Array.isArray(socketRows) ? socketRows.length : 0;
-    const activeIpCount = Array.isArray(socketRows) ? countUniqueIps(socketRows) : 0;
-    const outdatedCount = Array.isArray(outdatedPackagesList) ? outdatedPackagesList.length : 0;
-    statActiveIps.textContent = String(activeIpCount);
-    statOpenPorts.textContent = String(openPortCount);
-    statOutdatedPackages.textContent = String(outdatedCount);
-    const instant = new Date();
-    auditTimestamp.textContent = t('lastRunPrefix') + ' ' + instant.toLocaleString(getLocaleTag());
-  }
-
-  function clearTableBody() {
-    while (assetsTableBody.firstChild) {
-      assetsTableBody.removeChild(assetsTableBody.firstChild);
-    }
-  }
-
-  function appendAssetRow(socketRow) {
-    const tableRow = document.createElement('tr');
-    const ipCell = document.createElement('td');
-    const portCell = document.createElement('td');
-    const protocolCell = document.createElement('td');
-    const serviceCell = document.createElement('td');
-    const processCell = document.createElement('td');
-    ipCell.textContent = socketRow && socketRow.ip !== undefined ? String(socketRow.ip) : '';
-    portCell.textContent = socketRow && socketRow.port !== undefined ? String(socketRow.port) : '';
-    protocolCell.textContent = socketRow && socketRow.protocol !== undefined ? String(socketRow.protocol) : '';
-    serviceCell.textContent = socketRow && socketRow.service_guess !== undefined ? String(socketRow.service_guess) : '';
-    processCell.textContent = socketRow && socketRow.process_name !== undefined ? String(socketRow.process_name) : '';
-    tableRow.appendChild(ipCell);
-    tableRow.appendChild(portCell);
-    tableRow.appendChild(protocolCell);
-    tableRow.appendChild(serviceCell);
-    tableRow.appendChild(processCell);
-    assetsTableBody.appendChild(tableRow);
-  }
-
-  function renderAssetsTable(socketRows) {
-    clearTableBody();
-    if (!Array.isArray(socketRows) || socketRows.length === 0) {
-      assetRowCount.textContent = formatNamed(t('endpointsCount'), 0);
-      const emptyRow = document.createElement('tr');
-      const emptyCell = document.createElement('td');
-      emptyCell.colSpan = 5;
-      emptyCell.textContent = t('emptySocketsMessage');
-      emptyCell.style.color = '#94a3b8';
-      emptyCell.style.fontStyle = 'italic';
-      emptyRow.appendChild(emptyCell);
-      assetsTableBody.appendChild(emptyRow);
+  function renderList(el, items) {
+    clearElement(el);
+    if (!Array.isArray(items) || items.length === 0) {
+      if (el) el.textContent = t('noData');
       return;
     }
-    assetRowCount.textContent = formatNamed(t('endpointsCount'), socketRows.length);
-    socketRows.forEach(function (socketRow) {
-      appendAssetRow(socketRow);
+    const ul = document.createElement('ul');
+    items.forEach(function (it) {
+      const li = document.createElement('li');
+      li.textContent = String(it);
+      ul.appendChild(li);
     });
+    el.appendChild(ul);
   }
 
-  function clearRemediationGrid() {
-    while (remediationGrid.firstChild) {
-      remediationGrid.removeChild(remediationGrid.firstChild);
-    }
-  }
-
-  function appendRemediationCard(planItem) {
-    const cardElement = document.createElement('article');
-    cardElement.className = 'remediation-card';
-    const headerElement = document.createElement('div');
-    headerElement.className = 'remediation-card-header';
-    const titleElement = document.createElement('h3');
-    titleElement.className = 'remediation-title';
-    titleElement.textContent = planItem && planItem.title ? String(planItem.title) : t('remediationFallbackTitle');
-    const pillElement = document.createElement('div');
-    pillElement.className = 'confidence-pill';
-    const labelElement = document.createElement('span');
-    labelElement.className = 'confidence-label';
-    labelElement.textContent = t('aiConfidence');
-    const valueElement = document.createElement('strong');
-    valueElement.textContent = formatConfidencePercent(planItem ? planItem.similarity_score : 0);
-    pillElement.appendChild(labelElement);
-    pillElement.appendChild(valueElement);
-    headerElement.appendChild(titleElement);
-    headerElement.appendChild(pillElement);
-    const bodyElement = document.createElement('div');
-    bodyElement.className = 'remediation-body';
-    bodyElement.textContent = planItem && planItem.resolution_steps ? String(planItem.resolution_steps) : '';
-    cardElement.appendChild(headerElement);
-    cardElement.appendChild(bodyElement);
-    remediationGrid.appendChild(cardElement);
-  }
-
-  function renderRemediationPlan(planItems) {
-    clearRemediationGrid();
-    if (!Array.isArray(planItems) || planItems.length === 0) {
-      remediationCount.textContent = formatNamed(t('recommendationsCount'), 0);
-      const emptyState = document.createElement('div');
-      emptyState.className = 'muted-chip';
-      emptyState.style.display = 'inline-block';
-      emptyState.style.marginTop = '6px';
-      emptyState.textContent = t('emptyRemediationMessage');
-      remediationGrid.appendChild(emptyState);
-      return;
-    }
-    remediationCount.textContent = formatNamed(t('recommendationsCount'), planItems.length);
-    planItems.forEach(function (planItem) {
-      appendRemediationCard(planItem);
-    });
-  }
-
-  function renderDashboardFromPayload(payloadObject) {
-    const scannerResults = payloadObject && payloadObject.scanner_results ? payloadObject.scanner_results : {};
-    const socketRows = scannerResults.listening_sockets;
-    const outdatedReport = scannerResults.python_package_outdated_report || {};
-    const outdatedPackagesList = outdatedReport.packages || [];
-    const remediationPlan = payloadObject && payloadObject.remediation_plan ? payloadObject.remediation_plan : [];
-    renderOverview(socketRows, outdatedPackagesList);
-    renderAssetsTable(socketRows);
-    renderRemediationPlan(remediationPlan);
-  }
-
-  async function handleRunAuditClick() {
-    hideError();
-    setLoadingState(true);
-    try {
-      const trimmedSubnetValue = subnetInput ? String(subnetInput.value).trim() : '';
-      const requestPayload = {
-        language: getRequestLanguage(),
-      };
-      if (trimmedSubnetValue.length > 0) {
-        requestPayload.subnet = trimmedSubnetValue;
-      }
-      const requestBodyString = JSON.stringify(requestPayload);
-      const response = await fetch('/api/run_audit', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: requestBodyString,
-      });
-      const responseText = await response.text();
-      let parsedBody = null;
+  function auditWireup() {
+    const runBtn = document.getElementById('run-audit-button');
+    const subnetInput = document.getElementById('subnet-input');
+    const tableBody = document.getElementById('network-table-body');
+    const anomalyCount = document.getElementById('anomaly-count');
+    const remediationList = document.getElementById('remediation-list');
+    const rawEl = document.getElementById('audit-raw');
+    if (!runBtn) return;
+    runBtn.addEventListener('click', async function () {
+      runBtn.disabled = true;
       try {
-        parsedBody = responseText ? JSON.parse(responseText) : null;
-      } catch (parseError) {
-        showError(t('errorInvalidJson'));
-        return;
-      }
-      if (!response.ok) {
-        const errorLabel = parsedBody && parsedBody.error ? String(parsedBody.error) : 'request_failed';
-        const detailParts = [];
-        detailParts.push('Status ' + String(response.status) + ' (' + errorLabel + ')');
-        if (parsedBody && parsedBody.stderr_excerpt) {
-          detailParts.push(String(parsedBody.stderr_excerpt));
+        clearElement(tableBody);
+        const payload = { language: currentLanguage };
+        const subnet = subnetInput ? String(subnetInput.value || '').trim() : '';
+        if (subnet) payload.subnet = subnet;
+        const res = await jsonFetch('/api/audit/run', 'POST', payload);
+        if (!res.ok) {
+          alert('Request failed');
+          return;
         }
-        if (parsedBody && parsedBody.stdout_excerpt) {
-          detailParts.push(String(parsedBody.stdout_excerpt));
-        }
-        showError(detailParts.join('\n\n'));
-        return;
+        const sockets = res.body && res.body.scanner_results && Array.isArray(res.body.scanner_results.listening_sockets) ? res.body.scanner_results.listening_sockets : [];
+        if (anomalyCount) anomalyCount.textContent = String(sockets.length);
+        sockets.forEach(function (row) {
+          const tr = document.createElement('tr');
+          [row.ip, row.port, row.protocol, row.service_guess, row.process_name].forEach(function (v) {
+            const td = document.createElement('td');
+            td.textContent = v === undefined || v === null ? '' : String(v);
+            tr.appendChild(td);
+          });
+          tableBody.appendChild(tr);
+        });
+        const plan = res.body && Array.isArray(res.body.remediation_plan) ? res.body.remediation_plan : [];
+        const planLines = plan.map(function (p) { return String(p.title || '') + ': ' + String(p.resolution_steps || ''); });
+        renderList(remediationList, planLines);
+        if (rawEl) rawEl.textContent = JSON.stringify(res.body, null, 2);
+      } finally {
+        runBtn.disabled = false;
       }
-      if (!parsedBody || typeof parsedBody !== 'object') {
-        showError(t('errorUnexpectedEmpty'));
-        return;
-      }
-      renderDashboardFromPayload(parsedBody);
-    } catch (networkError) {
-      showError(t('errorNetwork'));
-    } finally {
-      setLoadingState(false);
-    }
+    });
   }
 
-  runAuditButton.addEventListener('click', function () {
-    handleRunAuditClick();
-  });
+  function monitoringWireup() {
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const viewHosts = document.getElementById('view-hosts');
+    const viewLive = document.getElementById('view-live');
+    const viewAi = document.getElementById('view-ai');
+    const hostsBody = document.getElementById('hosts-table-body');
+    const metricsBody = document.getElementById('metrics-table-body');
+    const aiRoot = document.getElementById('ai-decisions');
+    const refreshHosts = document.getElementById('refresh-hosts');
+    const createHost = document.getElementById('create-host');
+    const updateHost = document.getElementById('update-host');
+    const clearHost = document.getElementById('clear-host');
+    const pollBtn = document.getElementById('poll-metrics');
+    const refreshMetrics = document.getElementById('refresh-metrics');
+    const refreshAi = document.getElementById('refresh-ai');
+    const hostIdEl = document.getElementById('host-id');
+    const hostNameEl = document.getElementById('host-hostname');
+    const hostIpEl = document.getElementById('host-ip');
+    const hostTypeEl = document.getElementById('host-device-type');
+
+    function showView(name) {
+      [viewHosts, viewLive, viewAi].forEach(function (v) { if (v) v.classList.remove('active'); });
+      if (name === 'hosts' && viewHosts) viewHosts.classList.add('active');
+      if (name === 'live' && viewLive) viewLive.classList.add('active');
+      if (name === 'ai' && viewAi) viewAi.classList.add('active');
+      navButtons.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-view') === name); });
+    }
+
+    navButtons.forEach(function (b) {
+      b.addEventListener('click', function () {
+        showView(b.getAttribute('data-view'));
+      });
+    });
+
+    function fillHostForm(host) {
+      if (hostIdEl) hostIdEl.value = String(host.id || '');
+      if (hostNameEl) hostNameEl.value = String(host.hostname || '');
+      if (hostIpEl) hostIpEl.value = String(host.ip_address || '');
+      if (hostTypeEl) hostTypeEl.value = String(host.device_type || 'Server');
+    }
+
+    function clearHostForm() {
+      if (hostIdEl) hostIdEl.value = '';
+      if (hostNameEl) hostNameEl.value = '';
+      if (hostIpEl) hostIpEl.value = '';
+      if (hostTypeEl) hostTypeEl.value = 'Server';
+    }
+
+    async function loadHosts() {
+      const res = await jsonFetch('/api/hosts', 'GET');
+      if (!res.ok) return;
+      clearElement(hostsBody);
+      const hosts = res.body && Array.isArray(res.body.hosts) ? res.body.hosts : [];
+      hosts.forEach(function (h) {
+        const tr = document.createElement('tr');
+        [h.id, h.hostname, h.ip_address, h.device_type, h.date_added].forEach(function (v) {
+          const td = document.createElement('td');
+          td.textContent = v === undefined || v === null ? '' : String(v);
+          tr.appendChild(td);
+        });
+        const tdActions = document.createElement('td');
+        const editBtn = document.createElement('button');
+        editBtn.textContent = t('edit');
+        editBtn.addEventListener('click', function () {
+          fillHostForm(h);
+          showView('hosts');
+        });
+        const delBtn = document.createElement('button');
+        delBtn.textContent = t('delete');
+        delBtn.style.marginLeft = '8px';
+        delBtn.addEventListener('click', async function () {
+          const resDel = await jsonFetch('/api/hosts', 'DELETE', { id: h.id });
+          if (resDel.ok) await loadHosts();
+        });
+        tdActions.appendChild(editBtn);
+        tdActions.appendChild(delBtn);
+        tr.appendChild(tdActions);
+        hostsBody.appendChild(tr);
+      });
+    }
+
+    async function createHostAction() {
+      const payload = {
+        hostname: hostNameEl ? String(hostNameEl.value || '').trim() : '',
+        ip_address: hostIpEl ? String(hostIpEl.value || '').trim() : '',
+        device_type: hostTypeEl ? hostTypeEl.value : 'Server',
+      };
+      const res = await jsonFetch('/api/hosts', 'POST', payload);
+      if (res.ok) {
+        clearHostForm();
+        await loadHosts();
+      } else {
+        alert('Request failed');
+      }
+    }
+
+    async function updateHostAction() {
+      const payload = {
+        id: hostIdEl ? Number(hostIdEl.value || 0) : 0,
+        hostname: hostNameEl ? String(hostNameEl.value || '').trim() : '',
+        ip_address: hostIpEl ? String(hostIpEl.value || '').trim() : '',
+        device_type: hostTypeEl ? hostTypeEl.value : 'Server',
+      };
+      const res = await jsonFetch('/api/hosts', 'PUT', payload);
+      if (res.ok) {
+        clearHostForm();
+        await loadHosts();
+      } else {
+        alert('Request failed');
+      }
+    }
+
+    async function loadMetricsLatest() {
+      const res = await jsonFetch('/api/metrics/latest', 'GET');
+      if (!res.ok) return;
+      clearElement(metricsBody);
+      const rows = res.body && Array.isArray(res.body.metrics) ? res.body.metrics : [];
+      rows.forEach(function (m) {
+        const tr = document.createElement('tr');
+        [m.hostname, m.ip_address, m.device_type, m.cpu_utilization, m.ram_usage, m.disk_usage, m.temperature_c, m.status, m.polled_at].forEach(function (v) {
+          const td = document.createElement('td');
+          td.textContent = v === undefined || v === null ? '' : String(v);
+          tr.appendChild(td);
+        });
+        metricsBody.appendChild(tr);
+      });
+    }
+
+    async function pollMetrics() {
+      const res = await jsonFetch('/api/metrics/poll', 'POST', {});
+      if (!res.ok) return;
+      await loadMetricsLatest();
+    }
+
+    async function loadAiDecisions() {
+      const res = await jsonFetch('/api/ai/decisions', 'POST', { language: currentLanguage });
+      if (!res.ok) return;
+      clearElement(aiRoot);
+      const decisions = res.body && Array.isArray(res.body.decisions) ? res.body.decisions : [];
+      if (decisions.length === 0) {
+        aiRoot.textContent = t('noData');
+        return;
+      }
+      decisions.forEach(function (d) {
+        const panel = document.createElement('div');
+        panel.className = 'panel';
+        const h = document.createElement('div');
+        h.style.fontWeight = '900';
+        h.textContent = String(d.hostname || '') + ' (' + String(d.ip_address || '') + ') - ' + String(d.title || '');
+        const p1 = document.createElement('div');
+        p1.className = 'muted';
+        p1.style.marginTop = '8px';
+        p1.textContent = String(d.trend_analysis || '');
+        const p2 = document.createElement('div');
+        p2.style.marginTop = '10px';
+        p2.textContent = String(d.resolution_text || '');
+        const pre = document.createElement('pre');
+        const code = document.createElement('code');
+        code.textContent = String(d.script || '');
+        pre.appendChild(code);
+        panel.appendChild(h);
+        panel.appendChild(p1);
+        panel.appendChild(p2);
+        panel.appendChild(pre);
+        aiRoot.appendChild(panel);
+      });
+    }
+
+    if (refreshHosts) refreshHosts.addEventListener('click', loadHosts);
+    if (createHost) createHost.addEventListener('click', createHostAction);
+    if (updateHost) updateHost.addEventListener('click', updateHostAction);
+    if (clearHost) clearHost.addEventListener('click', clearHostForm);
+    if (pollBtn) pollBtn.addEventListener('click', pollMetrics);
+    if (refreshMetrics) refreshMetrics.addEventListener('click', loadMetricsLatest);
+    if (refreshAi) refreshAi.addEventListener('click', loadAiDecisions);
+
+    loadHosts();
+    loadMetricsLatest();
+    loadAiDecisions();
+  }
+
+  if (pageName === 'audit') auditWireup();
+  if (pageName === 'monitoring') monitoringWireup();
 })();

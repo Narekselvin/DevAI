@@ -3,135 +3,101 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>System Audit Command Center</title>
+<title>Infrastructure Observability Dashboard</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-.lang-selector {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-primary);
-  border-radius: 10px;
-  padding: 10px 32px 10px 14px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  min-width: 148px;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
-}
-.lang-selector:hover {
-  border-color: rgba(87, 148, 242, 0.35);
-}
-.lang-selector:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
+body { margin: 0; font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; }
+.dashboard-shell { max-width: 1280px; margin: 0 auto; padding: 16px; }
+.sticky-header { position: sticky; top: 0; z-index: 30; background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+.header-top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.header-top input, .header-top select, .header-top button { border: 1px solid #334155; background: #0b1220; color: #e2e8f0; border-radius: 8px; padding: 9px 10px; }
+.header-top button { background: #2563eb; border-color: #2563eb; cursor: pointer; }
+.global-health { margin-top: 10px; display: grid; gap: 8px; }
+.health-score { font-size: 22px; font-weight: 700; }
+.tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.tab-button { border: 1px solid #334155; background: #111827; color: #e2e8f0; border-radius: 8px; padding: 10px 12px; cursor: pointer; }
+.tab-button.active { background: #1d4ed8; border-color: #1d4ed8; }
+.tab-panel { display: none; border: 1px solid #1f2937; border-radius: 12px; background: #111827; padding: 14px; }
+.tab-panel.active { display: block; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border-bottom: 1px solid #1f2937; text-align: left; padding: 8px; font-size: 14px; }
+.sub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.card { border: 1px solid #1f2937; border-radius: 10px; padding: 10px; background: #0b1220; }
+.muted { color: #94a3b8; }
 </style>
 </head>
 <body>
-<div id="loading-overlay" class="loading-overlay hidden" aria-hidden="true">
-<div class="loading-backdrop"></div>
-<div class="loading-panel">
-<div class="spinner" role="progressbar" data-i18n-aria-label="loadingAria"></div>
-<p class="loading-message" data-i18n="loadingMessage">Running network audit pipeline</p>
-</div>
-</div>
-<div class="app-shell">
-<header class="top-bar">
-<div class="brand-block">
-<div class="brand-mark"></div>
-<div class="brand-text">
-<span class="brand-title" data-i18n="brandTitle">Infrastructure Observability</span>
-<span class="brand-subtitle" data-i18n="brandSubtitle">Local System Audit Intelligence</span>
-</div>
-</div>
-<div class="top-bar-actions">
-<label class="visually-hidden" for="language-select" data-i18n="languageLabel">Language</label>
-<select id="language-select" class="lang-selector">
+<div class="dashboard-shell">
+<header class="sticky-header">
+<div class="header-top">
+<select id="language-select">
 <option value="en">English</option>
 <option value="ru">Русский</option>
 <option value="hy">Հայերեն</option>
 </select>
-<input type="text" id="subnet-input" class="subnet-input" data-i18n-placeholder="subnetPlaceholder" placeholder="Enter Subnet (e.g., 192.168.1.0/24) - Optional" autocomplete="off" spellcheck="false">
-<button type="button" id="run-audit-button" class="primary-action" data-i18n="runAudit">Run Network Audit</button>
+<input type="text" id="subnet-input" placeholder="192.168.1.0/24">
+<input type="text" id="snmp-targets-input" placeholder="10.0.0.10,10.0.0.11">
+<select id="snmp-device-type">
+<option value="servers" data-i18n="servers">Servers</option>
+<option value="switches" data-i18n="switches">Switches/Network Gear</option>
+</select>
+<button type="button" id="run-audit-button" data-i18n="runAudit">Run Audit</button>
+</div>
+<div class="global-health">
+<div id="global-health-score" class="health-score">Global System Health Score: 100%</div>
+<div id="global-health-recommendation" class="muted">Global AI Infrastructure Recommendation will appear after audit run.</div>
 </div>
 </header>
-<main class="main-canvas">
-<section class="panel status-panel">
-<div class="panel-heading">
-<h2 data-i18n="statusOverview">Status Overview</h2>
-<span id="audit-timestamp" class="muted-chip"></span>
+<div class="tabs">
+<button class="tab-button active" data-tab="tab-network" data-i18n="tabNetwork">Smart Network Audit</button>
+<button class="tab-button" data-tab="tab-hardware" data-i18n="tabHardware">Hardware & Peripherals (SNMP)</button>
+<button class="tab-button" data-tab="tab-vm" data-i18n="tabVm">Virtual Machines</button>
 </div>
-<div class="stat-grid">
-<div class="stat-card">
-<div class="stat-label" data-i18n="statActiveIps">Active IPs</div>
-<div id="stat-active-ips" class="stat-value">0</div>
-<div class="stat-hint" data-i18n="statHintBind">Unique bind addresses</div>
+<section id="tab-network" class="tab-panel active">
+<div class="sub-grid">
+<div class="card"><div data-i18n="anomalyPorts">Anomalous Open Ports</div><div id="anomaly-count">0</div></div>
+<div class="card"><div data-i18n="outdatedPackages">Outdated Packages</div><div id="outdated-count">0</div></div>
 </div>
-<div class="stat-card">
-<div class="stat-label" data-i18n="statOpenPorts">Open Ports</div>
-<div id="stat-open-ports" class="stat-value">0</div>
-<div class="stat-hint" data-i18n="statHintSockets">Listening sockets</div>
-</div>
-<div class="stat-card">
-<div class="stat-label" data-i18n="statOutdatedPackages">Outdated Packages</div>
-<div id="stat-outdated-packages" class="stat-value">0</div>
-<div class="stat-hint" data-i18n="statHintPip">Python pip report</div>
-</div>
-</div>
-</section>
-<section class="panel table-panel">
-<div class="panel-heading">
-<h2 data-i18n="networkAssets">Discovered Network Assets</h2>
-<span id="asset-row-count" class="muted-chip"></span>
-</div>
-<div class="table-scroll">
-<table class="data-table" id="assets-table">
+<table>
 <thead>
 <tr>
-<th data-i18n="colIp">IP Address</th>
-<th data-i18n="colPort">Port</th>
-<th data-i18n="colProtocol">Protocol</th>
-<th data-i18n="colService">Guessed Service</th>
-<th data-i18n="colProcess">Process</th>
+<th data-i18n="ip">IP</th>
+<th data-i18n="port">Port</th>
+<th data-i18n="protocol">Protocol</th>
+<th data-i18n="service">Service</th>
+<th data-i18n="process">Process</th>
 </tr>
 </thead>
-<tbody id="assets-table-body">
-</tbody>
+<tbody id="network-table-body"></tbody>
 </table>
-</div>
 </section>
-<section class="panel remediation-panel">
-<div class="panel-heading">
-<h2 data-i18n="aiRemediation">AI Remediation Plan</h2>
-<span id="remediation-count" class="muted-chip"></span>
+<section id="tab-hardware" class="tab-panel">
+<div class="sub-grid">
+<div class="card"><div data-i18n="snmpDevices">SNMP Devices</div><div id="snmp-device-count">0</div></div>
+<div class="card"><div data-i18n="snmpRecommendations">AI SNMP Recommendations</div><div id="snmp-rec-count">0</div></div>
 </div>
-<div id="remediation-grid" class="remediation-grid">
-</div>
+<table>
+<thead>
+<tr>
+<th data-i18n="hostname">Hostname</th>
+<th data-i18n="ip">IP</th>
+<th data-i18n="cpu">CPU %</th>
+<th data-i18n="ram">RAM %</th>
+<th data-i18n="disk">Disk %</th>
+<th data-i18n="temp">Temp C</th>
+</tr>
+</thead>
+<tbody id="snmp-table-body"></tbody>
+</table>
 </section>
-<section id="error-banner" class="error-banner hidden" role="alert"></section>
-</main>
-<footer class="app-footer">
-<span class="footer-note" data-i18n="footerNote">Powered by local TF-IDF similarity matching against sysadmin_knowledge.db</span>
-</footer>
+<section id="tab-vm" class="tab-panel">
+<h3 data-i18n="vmTitle">Virtual Machines</h3>
+<div class="muted" data-i18n="vmStub">This panel is reserved for future VM agent integration.</div>
+</section>
+<section class="tab-panel" id="tab-remediation" style="display:block; margin-top:12px;">
+<h3 data-i18n="aiRemediation">AI Remediation Plan</h3>
+<div id="remediation-list"></div>
+</section>
 </div>
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
