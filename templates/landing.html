@@ -3,38 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Observability Platform</title>
+  <title>Infrastructure Sentinel</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <style>
-    body{margin:0;background:#0b1220;color:#e5e7eb;font-family:Arial,sans-serif}
-    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-    .grid{width:min(980px,100%);display:grid;grid-template-columns:1fr 1fr;gap:18px}
-    .card{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:10px;cursor:pointer;text-decoration:none;color:inherit}
-    .card:hover{border-color:#334155;transform:translateY(-1px)}
-    .title{font-size:22px;font-weight:800}
-    .sub{color:#94a3b8;line-height:1.4}
-    .topbar{position:fixed;top:14px;right:14px;display:flex;gap:10px;align-items:center}
-    .topbar select{background:#0b1220;border:1px solid #334155;color:#e5e7eb;border-radius:10px;padding:10px 12px}
-    @media (max-width:860px){.grid{grid-template-columns:1fr}}
-  </style>
 </head>
-<body data-page="landing">
-  <div class="topbar">
-    <select id="language-select">
+<body data-page="landing" class="sentinel-body-offset">
+  <div class="sentinel-landing-topbar">
+    <select id="language-select" class="sentinel-field sentinel-focus-pulse">
       <option value="en">English</option>
       <option value="ru">Русский</option>
       <option value="hy">Հայերեն</option>
     </select>
   </div>
-  <div class="wrap">
-    <div class="grid">
-      <a class="card" href="/audit">
-        <div class="title" data-i18n="landingAuditTitle">Network Audit</div>
-        <div class="sub" data-i18n="landingAuditSubtitle">Run smart scanning with noise reduction and AI remediation</div>
+  <div class="sentinel-landing-wrap">
+    <div class="sentinel-route-grid">
+      <a class="sentinel-route-card sentinel-action-scale" href="/audit">
+        <div class="sentinel-route-title" data-i18n="landingAuditTitle">Network Audit</div>
+        <div class="sentinel-route-sub" data-i18n="landingAuditSubtitle">Run smart scanning with noise reduction and AI remediation</div>
       </a>
-      <a class="card" href="/monitoring">
-        <div class="title" data-i18n="landingMonitoringTitle">Infrastructure Monitoring</div>
-        <div class="sub" data-i18n="landingMonitoringSubtitle">Zabbix-style observability with hosts, live metrics, and AI decisions</div>
+      <a class="sentinel-route-card sentinel-action-scale" href="/monitoring">
+        <div class="sentinel-route-title" data-i18n="landingMonitoringTitle">Infrastructure Sentinel Console</div>
+        <div class="sentinel-route-sub" data-i18n="landingMonitoringSubtitle">Hosted observability cockpit with multilingual AI decisions</div>
       </a>
     </div>
   </div>

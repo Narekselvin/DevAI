@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -67,6 +68,7 @@ def build_query_text_from_scanner_payload(scanner_payload):
                     str(listener_record.get('protocol')),
                     str(listener_record.get('service_guess')),
                     str(listener_record.get('process_name')),
+                    str(listener_record.get('service_version_banner')),
                 ]
             )
         )
@@ -330,13 +332,20 @@ def generate_global_ai_recommendation(global_health_score, snmp_metrics, target_
     )
 
 
-def _fetch_metrics_history(connection, host_id, limit_value=5):
+def _fetch_metrics_history(connection, host_id, limit_value=5, oldest_first=False):
     cursor = connection.cursor()
-    cursor.execute(
-        'SELECT status, cpu_utilization, ram_usage, disk_usage, temperature_c, mock_data, polled_at '
-        'FROM metrics_history WHERE host_id = ? ORDER BY datetime(polled_at) DESC, id DESC LIMIT ?',
-        (int(host_id), int(limit_value)),
-    )
+    if oldest_first:
+        cursor.execute(
+            'SELECT status, cpu_utilization, ram_usage, disk_usage, temperature_c, mock_data, polled_at '
+            'FROM metrics_history WHERE host_id = ? ORDER BY datetime(polled_at) ASC, id ASC LIMIT ?',
+            (int(host_id), int(limit_value)),
+        )
+    else:
+        cursor.execute(
+            'SELECT status, cpu_utilization, ram_usage, disk_usage, temperature_c, mock_data, polled_at '
+            'FROM metrics_history WHERE host_id = ? ORDER BY datetime(polled_at) DESC, id DESC LIMIT ?',
+            (int(host_id), int(limit_value)),
+        )
     rows = cursor.fetchall()
     history = []
     for status, cpu, ram, disk, temp, mock_data, polled_at in rows:
@@ -354,12 +363,203 @@ def _fetch_metrics_history(connection, host_id, limit_value=5):
     return history
 
 
-def _detect_trend_issue(history_rows):
+def _parse_polled_ts(raw_value):
+    text_value = str(raw_value or '').strip()
+    if not text_value:
+        return None
+    compact = text_value.replace('Z', '').split('+', 1)[0]
+    formats = ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M:%S.%f')
+    for fmt in formats:
+        try:
+            return datetime.strptime(compact[:26], fmt)
+        except ValueError:
+            continue
+    try:
+        return datetime.fromisoformat(compact[:26])
+    except ValueError:
+        return None
+
+
+def _forecast_linear_horizon(series_rows, metric_key, ceiling_value):
+    if len(series_rows) < 5:
+        return None
+    points = []
+    for row in series_rows:
+        moment = _parse_polled_ts(row.get('polled_at'))
+        if moment is None:
+            continue
+        points.append((moment, float(row.get(metric_key, 0))))
+    if len(points) < 5:
+        return None
+    baseline = points[0][0]
+    hours_numeric = [(moment - baseline).total_seconds() / 3600.0 for moment, _ in points]
+    values_numeric = [value for _, value in points]
+    slope, intercept = np.polyfit(np.array(hours_numeric, dtype=float), np.array(values_numeric, dtype=float), 1)
+    slope_float = float(slope)
+    if slope_float <= 0.08:
+        return None
+    last_hour = hours_numeric[-1]
+    intercept_float = float(intercept)
+    estimated_cross_hour = None
+    if abs(slope_float) > 1e-9:
+        estimated_cross_hour = (float(ceiling_value) - intercept_float) / slope_float
+    if estimated_cross_hour is None:
+        return None
+    hours_remaining = estimated_cross_hour - last_hour
+    peak_now = slope_float * last_hour + intercept_float
+    if peak_now >= float(ceiling_value):
+        return None
+    if hours_remaining <= 0.2 or hours_remaining > 672:
+        return None
+    return slope_float, hours_remaining
+
+
+def _format_predictive_text(language_value, hostname_value, metric_name, slope_value, hours_remaining_value):
+    hours_rounded = max(round(float(hours_remaining_value), 1), 0.3)
+    slope_rounded = round(float(slope_value), 3)
+    return _localize(
+        language_value,
+        f'{metric_name} utilization on {hostname_value} is trending upward linearly at roughly {slope_rounded}% per hour versus recent samples. Prediction: critical envelope near {95}% approximately {hours_rounded} hours ahead if the slope persists. Evaluate batch windows, bursting limits, saturation on dependent datastore paths, then apply controlled mitigation.',
+        f'{metric_name} на {hostname_value} почти линейно растёт примерно на {slope_rounded}% в час по последним выборкам. Прогноз: порог около {95}% примерно через {hours_rounded} часа при сохранении тренда. Проверьте пакетные окна, лимиты всплесков и узкие места хранилища, затем применяйте поэтапное смягчение риска.',
+        f'{hostname_value}-ում {metric_name} փոխվում է մոտավորապես {slope_rounded}% յուր ժամ։ Կանխատեսման տակ շուրջ {hours_rounded} ժամում հնարավոր է մոտ {95}% օգտագործում առանց միջամտության։ Նախ զննեք workloads-ները և կախված համակարգերը, հետո զգույշ մեղմեք ռիսկը։',
+    )
+
+
+def match_vulnerability_advisories(connection, scanner_payload, target_language='en'):
+    normalized_language_value = target_language if target_language in ('en', 'ru', 'hy') else 'en'
+    blobs = []
+    for listener_record in scanner_payload.get('listening_sockets', []):
+        combined_fragment = ' '.join(
+            [
+                str(listener_record.get('service_guess', '')),
+                str(listener_record.get('process_name', '')),
+                str(listener_record.get('service_version_banner', '')),
+                str(listener_record.get('protocol', '')),
+                str(listener_record.get('port', '')),
+            ]
+        )
+        blobs.append(normalize_free_text_for_matching(combined_fragment))
+    flattened = normalize_free_text_for_matching(' '.join(blobs))
+    cursor = connection.cursor()
+    cursor.execute(
+        'SELECT match_signature, cve_identifier, advice_en, advice_ru, advice_hy, powershell_script FROM vulnerability_playbooks'
+    )
+    advisories_output = []
+    for match_signature, cve_identifier, advice_en_value, advice_ru_value, advice_hy_value, powershell_script_value in cursor.fetchall():
+        signature_normalized = normalize_free_text_for_matching(match_signature)
+        if not signature_normalized or signature_normalized not in flattened:
+            continue
+        localized_advice_text = (
+            advice_ru_value
+            if normalized_language_value == 'ru'
+            else advice_hy_value
+            if normalized_language_value == 'hy'
+            else advice_en_value
+        )
+        formatted_title = (
+            f'{cve_identifier} :: {localized_advice_text[:220]}'
+            if len(localized_advice_text) > 220
+            else f'{cve_identifier} :: {localized_advice_text}'
+        )
+        advisories_output.append(
+            {
+                'cve_identifier': str(cve_identifier),
+                'advice': localized_advice_text,
+                'match_signature': str(match_signature),
+                'powershell_script': str(powershell_script_value),
+                'title': formatted_title,
+            }
+        )
+    return advisories_output
+
+
+def _collect_dependency_pressure_hint(connection, language_value, dependent_host_id, hostname_value):
+    cursor = connection.cursor()
+    cursor.execute(
+        '''SELECT sd.depends_on_host_id, h.hostname FROM service_dependencies sd '''
+        '''JOIN hosts h ON h.id = sd.depends_on_host_id '''
+        '''WHERE sd.dependent_host_id = ?''',
+        (int(dependent_host_id),),
+    )
+    rows = cursor.fetchall()
+    if not rows:
+        return '', ''
+    segments = []
+    database_connection_script_value = '$ProgressPreference = \'SilentlyContinue\'; netstat -ano | Select-String "5432|3306"'
+    strained_present = False
+    for upstream_id, upstream_hostname in rows:
+        cursor.execute(
+            'SELECT cpu_utilization, ram_usage, disk_usage, status FROM metrics_history WHERE host_id = ? '
+            'ORDER BY datetime(polled_at) DESC, id DESC LIMIT 1',
+            (int(upstream_id),),
+        )
+        upstream_row = cursor.fetchone()
+        if not upstream_row:
+            strained_present = True
+            segments.append(
+                _localize(
+                    language_value,
+                    f'Mapped datastore dependency {upstream_hostname} has no polled samples yet.',
+                    f'Привязанная база данных {upstream_hostname} пока без свежего опроса.',
+                    f'Կապված տվյալների բազա {upstream_hostname}-ը առայժմ չունի թարմ հարցումներ։',
+                )
+            )
+            continue
+        upstream_cpu_value, upstream_ram_value, upstream_disk_value, upstream_status = upstream_row
+        upstream_cpu_int = int(upstream_cpu_value or 0)
+        upstream_ram_int = int(upstream_ram_value or 0)
+        upstream_disk_int = int(upstream_disk_value or 0)
+        strained_flags = []
+        if str(upstream_status) == 'offline':
+            strained_flags.append('offline')
+        if upstream_cpu_int >= 80:
+            strained_flags.append(f'CPU {upstream_cpu_int}%')
+        if upstream_ram_int >= 82:
+            strained_flags.append(f'RAM {upstream_ram_int}%')
+        if upstream_disk_int >= 92:
+            strained_flags.append(f'DISK {upstream_disk_int}%')
+        if not strained_flags:
+            continue
+        strained_present = True
+        fragments_joined = ', '.join(strained_flags)
+        segments.append(
+            _localize(
+                language_value,
+                f'Dependency {upstream_hostname} is showing pressure ({fragments_joined}); {hostname_value} may inherit latency or exhaustion symptoms on that datastore path.',
+                f'Зависимость {upstream_hostname} демонстрирует давление ({fragments_joined}); {hostname_value} может унаследовать задержки или перегруз памяти на этом пути к хранилищу.',
+                f'Կախվածություն {upstream_hostname}-ը ընդգծում է ճնշում ({fragments_joined})؛ {hostname_value}-ը կարող է զգալ ուշացում կամ պատուհանումներ տվյալների պահուստավոր ուղղությամբ։',
+            )
+        )
+    if not strained_present:
+        return '', ''
+    return ' '.join(segments).strip(), database_connection_script_value
+
+
+def _combine_predictive_signals(language_value, hostname_value, history_chronological, device_kind):
+    prioritized_strings = []
+    metric_definitions = [('cpu_utilization', 'CPU', 95)]
+    if str(device_kind) != 'VM':
+        metric_definitions.append(('temperature_c', 'Thermal edge', 80))
+    metric_definitions.extend([('ram_usage', 'RAM', 92), ('disk_usage', 'Disk', 95)])
+    for metric_key_loop, readable_label, cutoff_value in metric_definitions:
+        horizon_payload = _forecast_linear_horizon(history_chronological, metric_key_loop, cutoff_value)
+        if not horizon_payload:
+            continue
+        slope_part, horizon_part = horizon_payload
+        prioritized_strings.append(_format_predictive_text(language_value, hostname_value, readable_label, slope_part, horizon_part))
+    if not prioritized_strings:
+        return ''
+    return prioritized_strings[0]
+
+
+def _detect_trend_issue(history_rows, canonical_device_kind='Server'):
     if not history_rows:
         return 'NORMAL', {}
     offline_count = sum(1 for r in history_rows if str(r.get('status')) == 'offline')
     cpu_spikes = sum(1 for r in history_rows if int(r.get('cpu_utilization', 0)) > 90)
     temp_spikes = sum(1 for r in history_rows if int(r.get('temperature_c', 0)) >= 80)
+    if canonical_device_kind == 'VM':
+        temp_spikes = 0
     disk_spikes = sum(1 for r in history_rows if int(r.get('disk_usage', 0)) > 95)
     trend = {
         'samples': len(history_rows),
@@ -406,8 +606,8 @@ def _format_trend_text(language, hostname, issue_key, trend):
         return _localize(
             language,
             f"{hostname} is repeatedly unreachable in {trend.get('offline_count', 0)}/{samples} recent polls. Investigate power/network stability.",
-            f"{hostname} հաճախակի անհասանելի է {trend.get('offline_count', 0)}/{samples} վերջին հարցումներում։ Ստուգեք սնուցումը և ցանցի կայունությունը։",
-            f"У {hostname} устройство часто недоступно в {trend.get('offline_count', 0)}/{samples} последних опросов. Проверьте питание/стабильность сети.",
+            f"У {hostname} часто наблюдается недоступность в {trend.get('offline_count', 0)}/{samples} последних опросов. Проверьте питание и стабильность сети.",
+            f"{hostname}-ը անհամապատասխան հասանելի է եղել {trend.get('offline_count', 0)}/{samples} վերջին հարցումներում։ Ստուգեք սնուցումը և ցանցը։",
         )
     return ''
 
@@ -421,34 +621,60 @@ def generate_ai_decisions_from_metrics_history(connection, target_language='en',
     vectorizer = TfidfVectorizer(max_features=4096, ngram_range=(1, 2))
     matrix = vectorizer.fit_transform(docs) if docs else None
     decisions = []
-    for host_id, hostname, ip_address, device_type in hosts:
-        history = _fetch_metrics_history(connection, host_id, 5)
-        issue_key, trend = _detect_trend_issue(history)
-        if issue_key == 'NORMAL':
+    for host_id_value, hostname_value, ip_address_value, device_kind in hosts:
+        history_descending = _fetch_metrics_history(connection, host_id_value, 40, oldest_first=False)
+        history_ascending = _fetch_metrics_history(connection, host_id_value, 120, oldest_first=True)
+        issue_key_primary, trend_struct = _detect_trend_issue(history_descending, str(device_kind))
+        predictive_narrative = _combine_predictive_signals(language, str(hostname_value), history_ascending, str(device_kind))
+        dependency_story, dependency_shell = _collect_dependency_pressure_hint(
+            connection, language, int(host_id_value), str(hostname_value)
+        )
+        if issue_key_primary == 'NORMAL' and not predictive_narrative and not dependency_story:
             continue
-        trend_text = _format_trend_text(language, str(hostname), issue_key, trend)
-        best_entry = None
+        trend_fragment = ''
+        if issue_key_primary != 'NORMAL':
+            trend_fragment = _format_trend_text(language, str(hostname_value), issue_key_primary, trend_struct)
+        merged_narrative = ' '.join([trend_fragment, predictive_narrative, dependency_story]).strip()
+        tfidf_issue_token = issue_key_primary
+        if issue_key_primary == 'NORMAL' and predictive_narrative:
+            tfidf_issue_token = 'HIGH_CPU'
+        if issue_key_primary == 'NORMAL' and dependency_story and not predictive_narrative:
+            tfidf_issue_token = 'HIGH_CPU'
+        query_payload = history_descending[:10] if history_descending else history_ascending[-10:]
+        query_text = normalize_free_text_for_matching(
+            str(tfidf_issue_token) + ' ' + build_query_text_from_snmp_metrics(query_payload) + ' ' + merged_narrative
+        )
+        best_entry = {'title': tfidf_issue_token, 'remediation': '', 'remediation_script': ''}
         score_value = 0.0
-        if matrix is not None:
-            query_text = normalize_free_text_for_matching(str(issue_key) + ' ' + build_query_text_from_snmp_metrics(history))
+        if matrix is not None and query_text.strip():
             query_vector = vectorizer.transform([query_text])
             similarity_scores = cosine_similarity(query_vector, matrix).flatten()
             best_index = int(np.argmax(similarity_scores)) if len(similarity_scores) else 0
             score_value = float(similarity_scores[best_index]) if len(similarity_scores) else 0.0
-            best_entry = metadata[best_index] if metadata else None
-        if not best_entry:
-            best_entry = {'title': issue_key, 'remediation': '', 'remediation_script': ''}
-        script_block = _select_safe_script_snippet(str(device_type), issue_key, best_entry.get('remediation_script', ''))
+            if metadata:
+                best_entry = dict(metadata[best_index])
+        resolution_copy = str(best_entry.get('remediation') or '')
+        if predictive_narrative:
+            score_value = max(score_value, 0.35)
+        if dependency_story:
+            score_value = max(score_value, 0.42)
+        script_block = _select_safe_script_snippet(str(device_kind), tfidf_issue_token, best_entry.get('remediation_script', ''))
+        if dependency_shell:
+            base_script = str(script_block.get('script') or '').strip()
+            stack_script = base_script + '\n\n' + dependency_shell if base_script else dependency_shell
+            script_block['script'] = stack_script.strip()
         decisions.append(
             {
-                'host_id': int(host_id),
-                'hostname': str(hostname),
-                'ip_address': str(ip_address),
-                'device_type': str(device_type),
-                'issue_key': str(issue_key),
-                'title': str(best_entry.get('title') or issue_key),
-                'trend_analysis': trend_text,
-                'resolution_text': str(best_entry.get('remediation') or ''),
+                'host_id': int(host_id_value),
+                'hostname': str(hostname_value),
+                'ip_address': str(ip_address_value),
+                'device_type': str(device_kind),
+                'issue_key': str(tfidf_issue_token),
+                'title': str(best_entry.get('title') or tfidf_issue_token),
+                'trend_analysis': merged_narrative,
+                'predictive_projection': predictive_narrative or '',
+                'dependency_hints': dependency_story or '',
+                'resolution_text': resolution_copy,
                 'script': script_block.get('script'),
                 'script_language': script_block.get('language'),
                 'similarity_score': score_value,
@@ -460,19 +686,24 @@ def generate_ai_decisions_from_metrics_history(connection, target_language='en',
 
 def _select_safe_script_snippet(device_type, issue_key, fallback_script):
     normalized_type = str(device_type or '').strip().lower()
-    is_windows = normalized_type == 'server' and 'windows' in normalized_type
     if issue_key == 'HIGH_CPU':
         if normalized_type in ('server', 'vm'):
-            return {'language': 'powershell', 'script': 'Restart-Service -Name W3SVC -ErrorAction SilentlyContinue'}
+            return {
+                'language': 'powershell',
+                'script': 'Get-Process | Sort-Object CPU -Descending | Select-Object -First 8 Name,CPU,Id',
+            }
         return {'language': 'bash', 'script': 'systemctl restart nginx || true'}
     if issue_key == 'DISK_FULL':
         if normalized_type in ('server', 'vm'):
-            return {'language': 'bash', 'script': 'rm -rf /tmp/*'}
+            return {
+                'language': 'powershell',
+                'script': 'Get-PSDrive -PSProvider FileSystem | Select-Object Name,Used,Free',
+            }
         return {'language': 'bash', 'script': 'du -h -d 1 /var/log | sort -h | tail -n 20'}
     if issue_key == 'HIGH_TEMP':
-        return {'language': 'bash', 'script': 'echo \"Check fans/airflow; schedule hardware maintenance\"'}
+        return {'language': 'powershell', 'script': 'Write-Output \'Review HVAC paths; capture thermal telemetry on site visit\''}
     if issue_key == 'OFFLINE':
-        return {'language': 'bash', 'script': 'ping -c 2 127.0.0.1'}
+        return {'language': 'powershell', 'script': 'Test-NetConnection -ComputerName 127.0.0.1 -Port 514'}
     script_value = str(fallback_script or '').strip()
     return {'language': 'bash', 'script': script_value} if script_value else {'language': 'bash', 'script': 'echo \"No script available\"'}
 

@@ -34,6 +34,50 @@ def probe_tcp_port_accepting_connections(host_string, port_integer):
         return True
 
 
+def try_read_http_server_banner(host_string, port_integer, timeout_seconds=0.85):
+    try:
+        socket_object = socket.create_connection((host_string, int(port_integer)), timeout=timeout_seconds)
+    except OSError:
+        return None
+    try:
+        socket_object.sendall(b'GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n')
+        response_bytes = socket_object.recv(4096)
+    except OSError:
+        return None
+    finally:
+        try:
+            socket_object.close()
+        except OSError:
+            pass
+    if not response_bytes:
+        return None
+    header_blob = response_bytes.split(b'\r\n\r\n', 1)[0]
+    for line in header_blob.split(b'\r\n'):
+        if line.lower().startswith(b'server:'):
+            return line.split(b':', 1)[1].strip().decode('utf-8', errors='ignore').strip()
+    return None
+
+
+def annotate_http_listen_banners(socket_record):
+    if str(socket_record.get('protocol')).lower() != 'tcp':
+        return socket_record
+    try:
+        port_value = int(socket_record['port'])
+    except Exception:
+        return socket_record
+    if port_value not in (80, 8080, 8000):
+        return socket_record
+    ip_target = socket_record.get('ip')
+    if ip_target is None:
+        return socket_record
+    banner_result = try_read_http_server_banner(str(ip_target), port_value)
+    if banner_result:
+        mutated = dict(socket_record)
+        mutated['service_version_banner'] = banner_result
+        return mutated
+    return socket_record
+
+
 def build_remote_endpoint_record(host_string, port_integer):
     protocol_name = 'tcp'
     service_label = resolve_service_label_for_port(port_integer, protocol_name)
@@ -49,7 +93,8 @@ def build_remote_endpoint_record(host_string, port_integer):
 
 def evaluate_remote_endpoint_task(host_string, port_integer):
     if probe_tcp_port_accepting_connections(host_string, port_integer):
-        return build_remote_endpoint_record(host_string, port_integer)
+        endpoint_record = build_remote_endpoint_record(host_string, port_integer)
+        return annotate_http_listen_banners(endpoint_record)
     return None
 
 
@@ -123,16 +168,15 @@ def collect_listening_socket_records():
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 process_name = 'access_denied'
         service_label = resolve_service_label_for_port(port_value, protocol_name)
-        records.append(
-            {
-                'ip': ip_value,
-                'port': port_value,
-                'protocol': protocol_name,
-                'service_guess': service_label,
-                'process_id': process_identifier,
-                'process_name': process_name,
-            }
-        )
+        baseline_record = {
+            'ip': ip_value,
+            'port': port_value,
+            'protocol': protocol_name,
+            'service_guess': service_label,
+            'process_id': process_identifier,
+            'process_name': process_name,
+        }
+        records.append(annotate_http_listen_banners(baseline_record))
     return records
 
 

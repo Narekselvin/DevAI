@@ -33,26 +33,34 @@ class SNMPMonitor:
         rows = cursor.fetchall()
         results = []
         for host_id, hostname, ip_address, device_type in rows:
-            metrics = self.poll_target(str(ip_address), self._map_device_type(device_type), str(hostname))
+            canonical = str(device_type)
+            snmp_profile = self._map_device_type(canonical)
+            has_thermal = canonical in ('Server', 'Switch')
+            metrics = self.poll_target(str(ip_address), snmp_profile, str(hostname), has_thermal)
             self._insert_metrics_history(connection, int(host_id), metrics)
             results.append({'host_id': int(host_id), **metrics})
         connection.commit()
         return results
 
-    def poll_target(self, ip_address, device_type='servers', hostname_hint=None):
-        live_metrics = self._query_live_snmp(ip_address, device_type, hostname_hint)
+    def poll_target(self, ip_address, device_type='servers', hostname_hint=None, has_thermal=True):
+        live_metrics = self._query_live_snmp(ip_address, device_type, hostname_hint, has_thermal)
         if live_metrics is not None:
             return live_metrics
-        return self.mock_snmp_data(ip_address, device_type, hostname_hint)
+        return self.mock_snmp_data(ip_address, device_type, hostname_hint, has_thermal)
 
-    def mock_snmp_data(self, ip_address, device_type='servers', hostname_hint=None):
+    def mock_snmp_data(self, ip_address, device_type='servers', hostname_hint=None, has_thermal=True):
         seed_value = int(hashlib.md5(ip_address.encode('utf-8')).hexdigest()[:8], 16)
         random_generator = random.Random(seed_value + int(time.time() // 300))
         if device_type == 'switches':
             cpu_value = random_generator.randint(18, 76)
             ram_value = random_generator.randint(28, 84)
             disk_value = random_generator.randint(22, 58)
-            temp_value = random_generator.randint(33, 71)
+            temp_value = random_generator.randint(33, 71) if has_thermal else 0
+        elif device_type == 'vm' or not has_thermal:
+            cpu_value = random_generator.randint(25, 98)
+            ram_value = random_generator.randint(34, 96)
+            disk_value = random_generator.randint(20, 99)
+            temp_value = 0
         else:
             cpu_value = random_generator.randint(25, 98)
             ram_value = random_generator.randint(34, 96)
@@ -69,9 +77,10 @@ class SNMPMonitor:
             device_type=device_type,
             status='online',
             mock_data=True,
+            has_thermal=has_thermal,
         )
 
-    def _query_live_snmp(self, ip_address, device_type, hostname_hint=None):
+    def _query_live_snmp(self, ip_address, device_type, hostname_hint=None, has_thermal=True):
         if getCmd is None:
             return None
         oid_map = {
@@ -84,6 +93,9 @@ class SNMPMonitor:
         }
         values = {}
         for metric_key, oid_value in oid_map.items():
+            if metric_key == 'temp' and not has_thermal:
+                values[metric_key] = 0
+                continue
             metric_result = self._single_oid_query(ip_address, oid_value)
             if metric_result is None:
                 return None
@@ -94,7 +106,7 @@ class SNMPMonitor:
         ram_avail = min(max(self._safe_int(values['ram_avail'], 0), 0), ram_total)
         ram_usage = int(round(((ram_total - ram_avail) / float(ram_total)) * 100))
         disk_usage = self._safe_int(values['disk'], 0)
-        temperature = self._safe_int(values['temp'], 0)
+        temperature = 0 if not has_thermal else self._safe_int(values['temp'], 0)
         return self._compose_metric_payload(
             ip_address=ip_address,
             hostname=hostname_value,
@@ -105,6 +117,7 @@ class SNMPMonitor:
             device_type=device_type,
             status='online',
             mock_data=False,
+            has_thermal=has_thermal,
         )
 
     def _single_oid_query(self, ip_address, oid_value):
@@ -136,13 +149,14 @@ class SNMPMonitor:
         device_type,
         status,
         mock_data,
+        has_thermal=True,
     ):
         warnings = []
         if cpu_value > 85:
             warnings.append('cpu_high')
         if disk_usage > 95:
             warnings.append('disk_critical')
-        if temperature >= 80:
+        if has_thermal and temperature >= 80:
             warnings.append('temp_critical')
         return {
             'ip': ip_address,
@@ -172,6 +186,8 @@ class SNMPMonitor:
     def _map_device_type(self, device_type):
         if device_type == 'Switch':
             return 'switches'
+        if device_type == 'VM':
+            return 'vm'
         return 'servers'
 
     def _insert_metrics_history(self, connection, host_id, metrics):
@@ -189,8 +205,10 @@ class SNMPMonitor:
             ),
         )
         connection.execute(
-            'DELETE FROM metrics_history WHERE id IN ('
-            'SELECT id FROM metrics_history WHERE host_id = ? ORDER BY datetime(polled_at) DESC, id DESC LIMIT -1 OFFSET 5'
+            'DELETE FROM metrics_history WHERE host_id = ? AND id NOT IN ('
+            'SELECT id FROM ('
+            'SELECT id FROM metrics_history WHERE host_id = ? ORDER BY datetime(polled_at) DESC, id DESC LIMIT 800'
+            ')'
             ')',
-            (int(host_id),),
+            (int(host_id), int(host_id)),
         )

@@ -3,83 +3,67 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Infrastructure Monitoring</title>
+  <title data-i18n="documentMonitoringTitle">Infrastructure Sentinel Vigil Console</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <style>
-    body{margin:0;background:#0b1220;color:#e5e7eb;font-family:Arial,sans-serif}
-    .layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
-    .sidebar{background:#0f172a;border-right:1px solid #1f2937;padding:14px;position:fixed;top:0;left:0;bottom:0;width:260px;box-sizing:border-box}
-    .content{margin-left:260px;padding:18px}
-    .brand{font-weight:900;margin-bottom:12px}
-    .nav{display:grid;gap:8px;margin-bottom:14px}
-    .nav button{width:100%;text-align:left;background:#111827;border:1px solid #1f2937;color:#e5e7eb;border-radius:12px;padding:12px;cursor:pointer}
-    .nav button.active{border-color:#2563eb}
-    .topcontrols{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
-    select,input,button{border:1px solid #334155;background:#0b1220;color:#e5e7eb;border-radius:10px;padding:10px 12px}
-    button.primary{background:#2563eb;border-color:#2563eb;cursor:pointer}
-    .panel{background:#111827;border:1px solid #1f2937;border-radius:14px;padding:14px;margin-bottom:14px}
-    table{width:100%;border-collapse:collapse}
-    th,td{border-bottom:1px solid #1f2937;text-align:left;padding:8px;font-size:14px}
-    .muted{color:#94a3b8}
-    .view{display:none}
-    .view.active{display:block}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    pre{white-space:pre-wrap;background:#0b1220;border:1px solid #1f2937;border-radius:12px;padding:12px;overflow:auto}
-    @media (max-width:940px){.layout{grid-template-columns:1fr}.sidebar{position:relative;width:100%}.content{margin-left:0}}
-  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 </head>
-<body data-page="monitoring">
-  <div class="layout">
-    <aside class="sidebar">
-      <div class="brand" data-i18n="monitoringTitle">Infrastructure Monitoring</div>
-      <div class="topcontrols">
-        <a href="/" style="color:#e5e7eb;text-decoration:none" data-i18n="backToLanding">Back</a>
-        <select id="language-select">
+<body data-page="monitoring" class="sentinel-console">
+  <div class="sentinel-shell">
+    <aside class="sentinel-sidebar sentinel-stagger-enter">
+      <div class="sentinel-brand">
+        <div class="sentinel-brand-mark"></div>
+        <div class="sentinel-brand-text">
+          <div class="sentinel-brand-title" data-i18n="brandTitle">Infrastructure Sentinel</div>
+          <div class="sentinel-brand-caption" data-i18n="monitoringSubtitle">Localized AI auditing and observability</div>
+        </div>
+      </div>
+      <div class="sentinel-sidebar-actions">
+        <a class="sentinel-quiet-link sentinel-focus-pulse" href="/" data-i18n="backToLanding">Back</a>
+        <select id="language-select" class="sentinel-field sentinel-focus-pulse">
           <option value="en">English</option>
           <option value="ru">Русский</option>
           <option value="hy">Հայերեն</option>
         </select>
       </div>
-      <div class="nav">
-        <button class="nav-btn active" data-view="hosts" data-i18n="menuHosts">Hosts</button>
-        <button class="nav-btn" data-view="live" data-i18n="menuLive">Live Dashboard</button>
-        <button class="nav-btn" data-view="ai" data-i18n="menuAi">AI Decisions</button>
-      </div>
-      <div class="muted" data-i18n="monitoringSidebarHint">Add hosts, poll metrics, then review AI trend decisions.</div>
+      <nav class="sentinel-nav">
+        <button type="button" class="sentinel-nav-btn nav-btn sentinel-focus-pulse active" data-view="hosts" data-i18n="menuHosts">Hosts</button>
+        <button type="button" class="sentinel-nav-btn nav-btn sentinel-focus-pulse" data-view="live" data-i18n="menuLive">Live Dashboard</button>
+        <button type="button" class="sentinel-nav-btn nav-btn sentinel-focus-pulse" data-view="ai" data-i18n="menuAi">AI Decisions</button>
+      </nav>
+      <p class="sentinel-sidebar-hint" data-i18n="monitoringSidebarHint">Add hosts, poll metrics, then review AI trend decisions.</p>
     </aside>
-    <main class="content">
-      <section id="view-hosts" class="view active">
-        <div class="panel">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-            <div data-i18n="hostsTitle">Hosts</div>
-            <button class="primary" id="refresh-hosts" data-i18n="refresh">Refresh</button>
-          </div>
+    <main class="sentinel-main">
+      <section id="view-hosts" class="sentinel-view view active sentinel-stagger-enter">
+        <div class="sentinel-toolbar">
+          <h1 class="sentinel-view-title" data-i18n="hostsTitle">Hosts</h1>
+          <button type="button" class="sentinel-chip-btn sentinel-chip-primary sentinel-action-scale" id="refresh-hosts" data-i18n="refresh">Refresh</button>
         </div>
-        <div class="panel">
-          <div class="grid2">
-            <input id="host-id" type="text" placeholder="id" disabled>
-            <select id="host-device-type">
+        <div class="sentinel-panel sentinel-panel-lift sentinel-fade-up">
+          <div class="sentinel-host-form-grid">
+            <input id="host-id" class="sentinel-field" type="text" disabled data-i18n-placeholder="hostInternalIdPlaceholder" placeholder="">
+            <select id="host-device-type" class="sentinel-field sentinel-action-scale">
               <option value="Server" data-i18n="deviceServer">Server</option>
               <option value="Switch" data-i18n="deviceSwitch">Switch</option>
               <option value="VM" data-i18n="deviceVm">VM</option>
             </select>
-            <input id="host-hostname" type="text" placeholder="Hostname">
-            <input id="host-ip" type="text" placeholder="IP address">
+            <input id="host-hostname" class="sentinel-field sentinel-action-scale" type="text" data-i18n-placeholder="hostHostnamePlaceholder" placeholder="">
+            <input id="host-ip" class="sentinel-field sentinel-action-scale" type="text" data-i18n-placeholder="hostIpPlaceholder" placeholder="">
           </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-            <button class="primary" id="create-host" data-i18n="addHost">Add</button>
-            <button class="primary" id="update-host" data-i18n="updateHost">Update</button>
-            <button id="clear-host" data-i18n="clear">Clear</button>
+          <div class="sentinel-form-actions">
+            <button type="button" class="sentinel-chip-btn sentinel-chip-primary sentinel-action-scale" id="create-host" data-i18n="addHost">Add</button>
+            <button type="button" class="sentinel-chip-btn sentinel-chip-warn sentinel-action-scale" id="update-host" data-i18n="updateHost">Update</button>
+            <button type="button" class="sentinel-chip-btn sentinel-chip-ghost sentinel-action-scale" id="clear-host" data-i18n="clear">Clear</button>
           </div>
         </div>
-        <div class="panel">
-          <table>
+        <div class="sentinel-panel sentinel-panel-lift sentinel-table-wrap sentinel-fade-up">
+          <table class="sentinel-data-table hosts-table sentinel-table-soft">
             <thead>
               <tr>
                 <th>ID</th>
                 <th data-i18n="hostname">Hostname</th>
                 <th data-i18n="ip">IP</th>
                 <th data-i18n="deviceType">Device Type</th>
+                <th id="hosts-temperature-heading" data-i18n="temp">Temp C</th>
                 <th data-i18n="dateAdded">Date Added</th>
                 <th data-i18n="actions">Actions</th>
               </tr>
@@ -89,47 +73,58 @@
         </div>
       </section>
 
-      <section id="view-live" class="view">
-        <div class="panel">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-            <div data-i18n="liveTitle">Live Dashboard</div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-              <button class="primary" id="poll-metrics" data-i18n="pollNow">Poll Now</button>
-              <button class="primary" id="refresh-metrics" data-i18n="refresh">Refresh</button>
-            </div>
+      <section id="view-live" class="sentinel-view view sentinel-stagger-enter">
+        <div class="sentinel-toolbar">
+          <h1 class="sentinel-view-title" data-i18n="liveTitle">Live Dashboard</h1>
+          <div class="sentinel-toolbar-group">
+            <button type="button" class="sentinel-chip-btn sentinel-chip-primary sentinel-action-scale" id="poll-metrics" data-i18n="pollNow">Poll Now</button>
+            <button type="button" class="sentinel-chip-btn sentinel-chip-ghost sentinel-action-scale" id="refresh-metrics" data-i18n="refresh">Refresh</button>
           </div>
         </div>
-        <div class="panel">
-          <table>
-            <thead>
-              <tr>
-                <th data-i18n="hostname">Hostname</th>
-                <th data-i18n="ip">IP</th>
-                <th data-i18n="deviceType">Device Type</th>
-                <th data-i18n="cpu">CPU %</th>
-                <th data-i18n="ram">RAM %</th>
-                <th data-i18n="disk">Disk %</th>
-                <th data-i18n="temp">Temp C</th>
-                <th data-i18n="status">Status</th>
-                <th data-i18n="polledAt">Polled At</th>
-              </tr>
-            </thead>
-            <tbody id="metrics-table-body"></tbody>
-          </table>
-        </div>
+        <div id="live-dashboard-root" class="sentinel-live-root sentinel-fade-up"></div>
       </section>
 
-      <section id="view-ai" class="view">
-        <div class="panel">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-            <div data-i18n="aiDecisionsTitle">AI Decisions</div>
-            <button class="primary" id="refresh-ai" data-i18n="refresh">Refresh</button>
-          </div>
+      <section id="view-ai" class="sentinel-view view sentinel-stagger-enter">
+        <div class="sentinel-toolbar">
+          <h1 class="sentinel-view-title sentinel-title-ai-wash" data-i18n="aiDecisionsTitle">AI Decisions</h1>
+          <button type="button" class="sentinel-chip-btn sentinel-chip-ai sentinel-action-scale" id="refresh-ai" data-i18n="refresh">Refresh</button>
         </div>
-        <div id="ai-decisions"></div>
+        <div id="ai-decisions" class="sentinel-ai-stack"></div>
       </section>
     </main>
   </div>
+
+  <div id="host-metrics-modal" class="sentinel-modal" aria-hidden="true">
+    <div class="sentinel-modal-backdrop" data-dismiss-modal></div>
+    <div class="sentinel-modal-panel sentinel-panel-lift sentinel-fade-up" role="dialog">
+      <div class="sentinel-modal-header">
+        <div>
+          <div class="sentinel-modal-kicker" data-i18n="hostInsightKicker">Host insight</div>
+          <div class="sentinel-modal-title" id="host-modal-heading">—</div>
+        </div>
+        <button type="button" class="sentinel-modal-close sentinel-action-scale" id="host-modal-dismiss" data-i18n="closeModal">Close</button>
+      </div>
+      <div class="sentinel-modal-controls">
+        <label class="sentinel-control">
+          <span data-i18n="metricPickerLabel">Metric</span>
+          <select id="host-metric-scope" class="sentinel-field"></select>
+        </label>
+        <label class="sentinel-control">
+          <span data-i18n="chartStartLabel">Start</span>
+          <input type="datetime-local" id="host-metric-start" class="sentinel-field sentinel-action-scale">
+        </label>
+        <label class="sentinel-control">
+          <span data-i18n="chartEndLabel">End</span>
+          <input type="datetime-local" id="host-metric-end" class="sentinel-field sentinel-action-scale">
+        </label>
+        <button type="button" class="sentinel-chip-btn sentinel-chip-primary sentinel-action-scale" id="host-metric-refresh" data-i18n="loadHistory">Load</button>
+      </div>
+      <div class="sentinel-chart-box">
+        <canvas id="host-metric-chart" height="120"></canvas>
+      </div>
+    </div>
+  </div>
+
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>

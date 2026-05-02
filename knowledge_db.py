@@ -104,6 +104,27 @@ def initialize_schema(connection):
         'FOREIGN KEY (host_id) REFERENCES hosts(id)'
         ')'
     )
+    connection.execute(
+        'CREATE TABLE IF NOT EXISTS vulnerability_playbooks ('
+        'playbook_id INTEGER PRIMARY KEY AUTOINCREMENT,'
+        'match_signature TEXT UNIQUE NOT NULL,'
+        'cve_identifier TEXT NOT NULL,'
+        'advice_en TEXT NOT NULL,'
+        'advice_ru TEXT NOT NULL,'
+        'advice_hy TEXT NOT NULL,'
+        'powershell_script TEXT NOT NULL'
+        ')'
+    )
+    connection.execute(
+        'CREATE TABLE IF NOT EXISTS service_dependencies ('
+        'dependency_id INTEGER PRIMARY KEY AUTOINCREMENT,'
+        'dependent_host_id INTEGER NOT NULL,'
+        'depends_on_host_id INTEGER NOT NULL,'
+        'FOREIGN KEY (dependent_host_id) REFERENCES hosts(id),'
+        'FOREIGN KEY (depends_on_host_id) REFERENCES hosts(id),'
+        'UNIQUE(dependent_host_id, depends_on_host_id)'
+        ')'
+    )
     _ensure_hardware_playbooks_script_column(connection)
     connection.commit()
 
@@ -493,8 +514,67 @@ def seed_sample_manual_entries(connection):
     connection.commit()
 
 
+def seed_monitoring_topology_and_vulnerability_playbooks(connection):
+    cursor = connection.cursor()
+    cursor.execute('SELECT COUNT(*) FROM vulnerability_playbooks')
+    if cursor.fetchone()[0] == 0:
+        connection.execute(
+            'INSERT INTO vulnerability_playbooks (match_signature, cve_identifier, advice_en, advice_ru, advice_hy, powershell_script) VALUES (?,?,?,?,?,?)',
+            (
+                'nginx/',
+                'CVE-PREFIX-WARN',
+                'The discovered HTTP daemon banner reports an Nginx branch that warrants patch alignment with your hardened baseline.',
+                'HTTP-баннер указывает на ветку Nginx; сверьтесь с укрепленной базовой линией и планом патчей.',
+                'HTTP տողը ցույց տալիս է Nginx ճյուղ, որը պիտի համեմատել ձեր կոշտացված վիճակի հետ։',
+                '$ProgressPreference = \'SilentlyContinue\'; nginx -v 2>&1',
+            ),
+        )
+        connection.execute(
+            'INSERT INTO vulnerability_playbooks (match_signature, cve_identifier, advice_en, advice_ru, advice_hy, powershell_script) VALUES (?,?,?,?,?,?)',
+            (
+                'nginx/1.2.3',
+                'CVE-202X-YYYY',
+                'Nginx 1.2.3 is vulnerable to CVE-202X-YYYY. Upgrade the package through your approved change window as soon as you complete a staging validation. Prefer vendor maintained packages rather than rebuilding from source.',
+                'Nginx 1.2.3 уязвим к CVE-202X-YYYY. Обновите пакет в утвержденном окне изменений после проверки на стенде. Предпочитайте пакеты поставщика вместо сборки из исходников.',
+                'Nginx 1.2.3-ը խոցելի է CVE-202X-YYYY-ի նկատմամբ։ Թարմացրեք փաթեթը փոխման հաստատված պատուհանում՝ փորձարարական համակարգում ստուգումից հետո։ Նախընտրեք մատակառուցչի պահվող փաթեթները, և խուսափեք աղբյուրից կառուցումից, երբ հասանելի է պաշտոնական փաթեթ։',
+                '$ProgressPreference = \'SilentlyContinue\'; Invoke-WebRequest -Uri https://nginx.org/download/ -UseBasicParsing | Select-Object -ExpandProperty Links | Where-Object {$_.href -like \'nginx-*.tar.gz\'} | Select-Object -First 5 href',
+            ),
+        )
+        connection.execute(
+            'INSERT INTO vulnerability_playbooks (match_signature, cve_identifier, advice_en, advice_ru, advice_hy, powershell_script) VALUES (?,?,?,?,?,?)',
+            (
+                'openssh 7.6',
+                'CVE-FAKE-REMOTE-LOGIN',
+                'OpenSSH 7.6 is far behind current hardened baselines and may lack modern key exchange safeguards. Rotate host keys during upgrade, tighten allowed algorithms via configuration policy, and ensure jump hosts terminate sessions correctly.',
+                'OpenSSH 7.6 заметно отстает от современных укрепленных базовых уровней. Во время обновления смените ключи узла, ограничьте допустимые алгоритмы политикой конфигурации и убедитесь что бастионные хосты корректно завершают сессии.',
+                'OpenSSH 7.6-ը զգալիորեն հետամնացած է ժամանակակից կոշտացված բազային պահանջների համեմատ։ Բանալիները պտտեցրեք թարմացման ընթացքում, սահմանափակեք թույլատրելի ալգորիթմները կոնֆիգուրացիայի քաղաքականությամբ և համոզվեք, որ անցումային հոսթերը ճշգրիտ ավարտում են աշխատաշրջանները։',
+                '$ProgressPreference = \'SilentlyContinue\'; ssh -V 2>&1; Get-Service sshd | Select-Object Status,Name',
+            ),
+        )
+    cursor.execute('SELECT COUNT(*) FROM hosts')
+    if cursor.fetchone()[0] == 0:
+        connection.execute("INSERT INTO hosts (hostname, ip_address, device_type) VALUES ('Web01','10.10.40.11','VM')")
+        connection.execute("INSERT INTO hosts (hostname, ip_address, device_type) VALUES ('DB01','10.10.40.21','Server')")
+        connection.execute("INSERT INTO hosts (hostname, ip_address, device_type) VALUES ('Edge-Switch-01','10.10.40.254','Switch')")
+    cursor.execute(
+        '''SELECT COUNT(*) FROM service_dependencies'''
+    )
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("SELECT id, hostname FROM hosts WHERE hostname IN ('Web01','DB01')")
+        id_by_name = {str(r[1]): int(r[0]) for r in cursor.fetchall()}
+        wid = id_by_name.get('Web01')
+        did = id_by_name.get('DB01')
+        if wid and did:
+            connection.execute(
+                'INSERT OR IGNORE INTO service_dependencies (dependent_host_id, depends_on_host_id) VALUES (?, ?)',
+                (wid, did),
+            )
+    connection.commit()
+
+
 def ensure_database(db_path=None):
     connection = get_connection(db_path)
     initialize_schema(connection)
     seed_sample_manual_entries(connection)
+    seed_monitoring_topology_and_vulnerability_playbooks(connection)
     return connection

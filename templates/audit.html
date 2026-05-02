@@ -3,50 +3,36 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Network Audit</title>
+  <title>Infrastructure Sentinel — Audit Forge</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <style>
-    body{margin:0;background:#0b1220;color:#e5e7eb;font-family:Arial,sans-serif}
-    .top{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #1f2937;background:#111827;position:sticky;top:0}
-    .left{display:flex;gap:10px;align-items:center}
-    .brand{font-weight:900}
-    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    input,select,button{border:1px solid #334155;background:#0b1220;color:#e5e7eb;border-radius:10px;padding:10px 12px}
-    button{background:#2563eb;border-color:#2563eb;cursor:pointer}
-    .container{max-width:1200px;margin:0 auto;padding:18px;display:grid;gap:14px}
-    .panel{background:#111827;border:1px solid #1f2937;border-radius:14px;padding:14px}
-    table{width:100%;border-collapse:collapse}
-    th,td{border-bottom:1px solid #1f2937;text-align:left;padding:8px;font-size:14px}
-    .muted{color:#94a3b8}
-    pre{white-space:pre-wrap;background:#0b1220;border:1px solid #1f2937;border-radius:12px;padding:12px;overflow:auto}
-  </style>
 </head>
-<body data-page="audit">
-  <div class="top">
-    <div class="left">
-      <a href="/" style="color:#e5e7eb;text-decoration:none" data-i18n="backToLanding">Back</a>
-      <div class="brand" data-i18n="auditTitle">Network Audit</div>
+<body data-page="audit" class="sentinel-body-offset">
+  <header class="sentinel-page-header">
+    <div class="sentinel-toolbar-group">
+      <a href="/" class="sentinel-quiet-link sentinel-action-scale" data-i18n="backToLanding">Back</a>
+      <strong data-i18n="auditForgeTitle">Audit Forge</strong>
     </div>
-    <div class="controls">
-      <select id="language-select">
+    <div class="sentinel-toolbar-group">
+      <select id="language-select" class="sentinel-field sentinel-action-scale">
         <option value="en">English</option>
         <option value="ru">Русский</option>
         <option value="hy">Հայերեն</option>
       </select>
-      <input id="subnet-input" type="text" placeholder="192.168.1.0/24">
-      <button id="run-audit-button" data-i18n="runAudit">Run Audit</button>
+      <input id="subnet-input" class="sentinel-field sentinel-action-scale" type="text" data-i18n-placeholder="subnetPlaceholder" placeholder="">
+      <button type="button" id="run-audit-button" class="sentinel-chip-btn sentinel-chip-primary sentinel-action-scale" data-i18n="runAudit">Run Audit</button>
     </div>
-  </div>
-  <div class="container">
-    <div class="panel">
-      <div class="muted" data-i18n="auditHint">Safe whitelist ports are ignored by default; only anomalies are listed.</div>
+  </header>
+  <div class="sentinel-main" style="padding-top:8px;">
+    <div class="sentinel-panel sentinel-panel-lift sentinel-fade-up">
+      <p style="margin:0;color:var(--text-muted);line-height:1.46" data-i18n="auditHint">Safe whitelist ports are ignored by default; only anomalies are listed.</p>
     </div>
-    <div class="panel">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <div class="sentinel-panel sentinel-panel-lift sentinel-fade-up">
+      <div class="sentinel-toolbar" style="margin-bottom:12px">
         <div data-i18n="anomalousPorts">Anomalous Open Ports</div>
-        <div id="anomaly-count" class="muted">0</div>
+        <span id="anomaly-count">0</span>
       </div>
-      <table>
+      <div class="sentinel-table-wrap sentinel-table-soft">
+      <table class="hosts-table sentinel-data-table" style="width:100%">
         <thead>
           <tr>
             <th data-i18n="ip">IP</th>
@@ -58,14 +44,19 @@
         </thead>
         <tbody id="network-table-body"></tbody>
       </table>
+      </div>
     </div>
-    <div class="panel">
-      <div data-i18n="aiRemediation">AI Remediation Plan</div>
-      <div id="remediation-list" class="muted"></div>
+    <div class="sentinel-panel sentinel-panel-lift sentinel-fade-up">
+      <strong data-i18n="aiRemediation">AI Remediation Plan</strong>
+      <div id="remediation-list" style="margin-top:12px;color:var(--text-muted)"></div>
     </div>
-    <div class="panel">
-      <div data-i18n="rawPayload">Raw Payload</div>
-      <pre id="audit-raw" class="muted"></pre>
+    <div class="sentinel-panel sentinel-ai-card sentinel-panel-lift sentinel-fade-up">
+      <strong data-i18n="vulnPlaybookHeading">Version-aware threat playbooks</strong>
+      <div id="vulnerability-advisory-root" style="margin-top:12px"></div>
+    </div>
+    <div class="sentinel-panel sentinel-panel-lift sentinel-fade-up">
+      <strong data-i18n="rawPayload">Raw Payload</strong>
+      <pre id="audit-raw" style="margin-top:12px;white-space:pre-wrap;color:var(--text-muted);font-family:var(--font-mono)"></pre>
     </div>
   </div>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
