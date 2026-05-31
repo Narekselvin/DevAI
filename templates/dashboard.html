@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="documentDashboardTitle">DevAI</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="https://unpkg.com/vis-network@9.1.9/styles/vis-network.min.css" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js" crossorigin="anonymous"></script>
+</head>
+<body data-page="dashboard" class="sentinel-console sentinel-dashboard-body" data-theme="vibrant_dark">
+  <div id="audit-scan-loading" class="sentinel-global-loading" aria-hidden="true">
+    <div class="sentinel-global-loading-inner">
+      <div class="sentinel-orbit-spinner"></div>
+      <div class="sentinel-global-loading-label" data-i18n="auditLoadingLabel">Scanning surface</div>
+    </div>
+  </div>
+  <div id="discovery-scan-loading" class="sentinel-global-loading" aria-hidden="true">
+    <div class="sentinel-global-loading-inner">
+      <div class="sentinel-orbit-spinner"></div>
+      <div class="sentinel-global-loading-label" data-i18n="discoveryLoadingLabel">Discovering hosts</div>
+    </div>
+  </div>
+  <div id="sentinel-toast-root" class="sentinel-toast-root" aria-live="polite"></div>
+  <div id="snmp-poll-loading" class="sentinel-global-loading" aria-hidden="true">
+    <div class="sentinel-global-loading-inner">
+      <div class="sentinel-orbit-spinner"></div>
+      <div class="sentinel-global-loading-label" data-i18n="pollLoadingLabel">Polling hosts</div>
+    </div>
+  </div>
+  <div class="sentinel-dashboard-app" id="sentinel-dashboard-app">
+    <aside class="sentinel-sidebar sentinel-sidebar-fixed" id="sentinel-sidebar">
+      <div class="sentinel-brand">
+        <div class="sentinel-brand-mark"></div>
+        <div class="sentinel-brand-text">
+          <div class="sentinel-brand-title" data-i18n="brandTitle">DevAI</div>
+          <div class="sentinel-brand-caption" data-i18n="dashboardTagline">Unified observability</div>
+        </div>
+      </div>
+      <div class="sentinel-sidebar-actions">
+        <button type="button" class="sentinel-chip-btn sentinel-chip-ghost sentinel-sidebar-collapse" id="sidebar-collapse-toggle" data-i18n-title="sidebarCollapseTooltip" title="">
+          <i class="fa-solid fa-angles-left" aria-hidden="true"></i>
+        </button>
+        <select id="language-select" class="sentinel-field sentinel-focus-pulse">
+          <option value="en">English</option>
+          <option value="ru">Русский</option>
+          <option value="hy">Հայերեն</option>
+        </select>
+        <a class="sentinel-quiet-link sentinel-focus-pulse" href="{{ url_for('logout_route') }}" data-i18n="logoutLink">Sign out</a>
+      </div>
+      <nav class="sentinel-nav sentinel-dash-nav-stack">
+        <button type="button" class="sentinel-nav-btn sentinel-dash-nav active" data-dashboard-view="home" data-i18n-title="navHomeTooltip" title="">
+          <i class="fa-solid fa-house-signal fa-fw" aria-hidden="true"></i><span data-i18n="navHome">Home</span>
+        </button>
+        <button type="button" class="sentinel-nav-btn sentinel-dash-nav" data-dashboard-view="audit" data-i18n-title="navAuditTooltip" title="">
+          <i class="fa-solid fa-shield-halved fa-fw" aria-hidden="true"></i><span data-i18n="navAudit">Network Audit</span>
+        </button>
+        <button type="button" class="sentinel-nav-btn sentinel-dash-nav" data-dashboard-view="monitoring" data-i18n-title="navMonitoringTooltip" title="">
+          <i class="fa-solid fa-chart-line fa-fw" aria-hidden="true"></i><span data-i18n="navMonitoring">Monitoring</span>
+        </button>
+        <button type="button" class="sentinel-nav-btn sentinel-dash-nav" data-dashboard-view="topology" data-i18n-title="navTopologyTooltip" title="">
+          <i class="fa-solid fa-diagram-project fa-fw" aria-hidden="true"></i><span data-i18n="navTopology">Network Topology</span>
+        </button>
+        <button type="button" class="sentinel-nav-btn sentinel-dash-nav" data-dashboard-view="hosts" data-i18n-title="navHostsTooltip" title="">
+          <i class="fa-solid fa-server fa-fw" aria-hidden="true"></i><span data-i18n="navHosts">Host Management</span>
+        </button>
+        <button type="button" class="sentinel-nav-btn sentinel-dash-nav" data-dashboard-view="ai" data-i18n-title="navAiTooltip" title="">
+          <i class="fa-solid fa-brain fa-fw" aria-hidden="true"></i><span data-i18n="navAi">AI Decisions</span>
+        </button>
+        <button type="button" class="sentinel-nav-btn sentinel-dash-nav" data-dashboard-view="alerts" data-i18n-title="navAlertsTooltip" title="">
+          <i class="fa-solid fa-bell fa-fw" aria-hidden="true"></i><span data-i18n="navAlerts">Alerts &amp; Logs</span>
+        </button>
+        <button type="button" class="sentinel-nav-btn sentinel-dash-nav" data-dashboard-view="profile" data-i18n-title="navProfileTooltip" title="">
+          <i class="fa-solid fa-user-gear fa-fw" aria-hidden="true"></i><span data-i18n="navProfile">User Profile</span>
+        </button>
+        <button type="button" class="sentinel-nav-btn sentinel-dash-nav" data-dashboard-view="settings" data-i18n-title="navSettingsTooltip" title="">
+          <i class="fa-solid fa-sliders fa-fw" aria-hidden="true"></i><span data-i18n="navSettings">System Settings</span>
+        </button>
+      </nav>
+    </aside>
+    <div class="sentinel-dashboard-main-wrap">
+      <main class="sentinel-main sentinel-dashboard-scroll">
+        <section id="dashboard-panel-home" class="sentinel-dashboard-panel active" data-dashboard-panel="home">
+          <div class="sentinel-toolbar">
+            <h1 class="sentinel-view-title" data-i18n="homeTitle">Home</h1>
+          </div>
+          <div class="sentinel-home-grid" id="home-stats-root"></div>
+        </section>
+        <section id="dashboard-panel-audit" class="sentinel-dashboard-panel" data-dashboard-panel="audit">
+          <div class="sentinel-toolbar">
+            <h1 class="sentinel-view-title" data-i18n="auditForgeTitle">Audit Forge</h1>
+            <div class="sentinel-toolbar-group">
+              <input id="subnet-input" class="sentinel-field sentinel-action-scale" type="text" data-i18n-placeholder="subnetPlaceholder" placeholder="">
+              <button type="button" id="run-audit-button" class="sentinel-chip-btn sentinel-chip-primary sentinel-action-scale" data-i18n="runAudit">Run Audit</button>
+            </div>
+          </div>
+          <div class="sentinel-panel sentinel-panel-lift sentinel-fade-up">
+            <p class="sentinel-audit-hint" data-i18n="auditHint">Safe whitelist ports are ignored by default; only anomalies are listed.</p>
+          </div>
+          <div class="sentinel-panel sentinel-panel-lift sentinel-fade-up">
+            <div class="sentinel-toolbar" style="margin-bottom:12px">
+              <div data-i18n="anomalousPorts">Anomalous Open Ports</div>
+              <span id="anomaly-count">0</span>
+            </div>
+            <div class="sentinel-table-wrap sentinel-table-soft">
+              <table class="hosts-table sentinel-data-table" style="width:100%">
+                <thead>
+                  <tr>
+                    <th data-i18n="ip">IP</th>
+                    <th data-i18n="port">Port</th>
+                    <th data-i18n="protocol">Protocol</th>
+                    <th data-i18n="service">Service</th>
+                    <th data-i18n="process">Process</th>
+                  </tr>
+                </thead>
+                <tbody id="network-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="sentinel-panel sentinel-panel-lift sentinel-fade-up">
+            <strong data-i18n="aiRemediation">AI Remediation Plan</strong>
+            <div id="remediation-list" class="sentinel-remediation-list"></div>
+          </div>
+          <div id="audit-vuln-playbook-panel" class="sentinel-panel sentinel-ai-card sentinel-panel-lift sentinel-fade-up devai-playbook-hidden">
+            <strong data-i18n="vulnPlaybookHeading">Version-aware threat playbooks</strong>
+            <div id="vulnerability-advisory-root" class="sentinel-vuln-root"></div>
+          </div>
+          <div class="sentinel-panel sentinel-panel-lift sentinel-fade-up">
+            <strong data-i18n="rawPayload">Raw Payload</strong>
+            <pre id="audit-raw" class="sentinel-audit-raw"></pre>
+          </div>
+        </section>
+        <section id="dashboard-panel-monitoring" class="sentinel-dashboard-panel" data-dashboard-panel="monitoring">
+          <div class="sentinel-toolbar">
+            <h1 class="sentinel-view-title" data-i18n="liveTitle">Live Dashboard</h1>
+            <div class="sentinel-toolbar-group">
+              <button type="button" class="sentinel-chip-btn sentinel-chip-primary sentinel-action-scale" id="poll-metrics" data-i18n="pollNow">Poll Now</button>
+              <button type="button" class="sentinel-chip-btn sentinel-chip-ghost sentinel-action-scale" id="refresh-metrics" data-i18n="refresh">Refresh</button>
+            </div>
+          </div>
+          <div id="live-dashboard-root" class="sentinel-live-root sentinel-fade-up"></div>
+        </section>
+        <section id="dashboard-panel-topology" class="sentinel-dashboard-panel" data-dashboard-panel="topology">
+          <div class="sentinel-toolbar">
+            <h1 class="sentinel-view-title" data-i18n="topologyTitle">Network Topology</h1>
+            <div class="sentinel-toolbar-group">
+              <button type="button" class="sentinel-chip-btn sentinel-chip-ghost sentinel-action-scale" id="topology-refresh" data-i18n="refresh">Refresh</button>
+            </div>
+          </div>
+          <div id="topology-network" class="sentinel-topology-canvas sentinel-panel sentinel-panel-lift"></div>
+        </section>
+        <section id="dashboard-panel-hosts" class="sentinel-dashboard-panel" data-dashboard-panel="hosts">
+          <div class="sentinel-toolbar">
+            <h1 class="sentinel-view-title" data-i18n="hostsTitle">Hosts</h1>
+            <div class="sentinel-toolbar-group">
+              <button type="button" class="sentinel-chip-btn sentinel-chip-primary sentinel-action-scale" id="open-discovery-modal" data-i18n="discoveryOpen">Auto-Discovery</button>
+              <button type="button" class="sentinel-chip-btn sentinel-chip-primary sentinel-action-scale" id="open-host-crud-empty" data-i18n="addHostModal">Add host</button>
+              <button type="button" class="sentinel-chip-btn sentinel-chip-ghost sentinel-action-scale" id="refresh-hosts" data-i18n="refresh">Refresh</button>
+            </div>
+          </div>
+          <div class="sentinel-panel sentinel-panel-lift sentinel-table-wrap sentinel-fade-up">
+            <table class="sentinel-data-table hosts-table sentinel-table-soft">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th data-i18n="hostname">Hostname</th>
+                  <th data-i18n="ip">IP</th>
+                  <th data-i18n="vendorProfileLabel">Profile</th>
+                  <th data-i18n="deviceType">Device Type</th>
+                  <th data-i18n="pollingIntervalLabel">Interval</th>
+                  <th data-i18n="pollProtocolLabel">Protocol</th>
+                  <th id="hosts-temperature-heading" data-i18n="temp">Temp C</th>
+                  <th data-i18n="dateAdded">Date Added</th>
+                  <th data-i18n="actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="hosts-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+        <section id="dashboard-panel-ai" class="sentinel-dashboard-panel devai-predictive-zone" data-dashboard-panel="ai">
+          <div class="sentinel-toolbar">
+            <h1 class="sentinel-view-title sentinel-title-ai-wash" data-i18n="aiDecisionsTitle">AI Decisions</h1>
+            <button type="button" class="sentinel-chip-btn sentinel-chip-ai sentinel-action-scale" id="refresh-ai" data-i18n="refresh">Refresh</button>
+          </div>
+          <div class="devai-ai-insights-shell sentinel-ai-split">
+            <div class="devai-card sentinel-panel sentinel-panel-lift sentinel-fade-up devai-ai-panel-anomaly">
+              <h2 class="sentinel-subpanel-title" data-i18n="aiAnomalySectionTitle">Real-time anomaly alerts</h2>
+              <div id="ai-anomaly-root" class="sentinel-ai-stack sentinel-ai-terminal devai-ai-content"></div>
+            </div>
+            <div class="devai-card sentinel-panel sentinel-panel-lift sentinel-fade-up devai-ai-panel-predictive">
+              <h2 class="sentinel-subpanel-title" data-i18n="aiPredictiveSectionTitle">Predictive AI Insights</h2>
+              <div id="ai-predictive-root" class="sentinel-ai-stack sentinel-ai-terminal devai-ai-content devai-predictive-body"></div>
+              <div id="ai-manual-section-wrap" class="devai-playbook-hidden">
+                <h2 class="sentinel-subpanel-title sentinel-subpanel-title-spaced" data-i18n="aiManualSectionTitle">Manual intelligence</h2>
+                <div id="ai-manual-root" class="sentinel-ai-stack sentinel-ai-terminal devai-ai-content"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="dashboard-panel-alerts" class="sentinel-dashboard-panel" data-dashboard-panel="alerts">
+          <div class="sentinel-toolbar">
+            <h1 class="sentinel-view-title" data-i18n="alertsTitle">Alerts &amp; Logs</h1>
+            <button type="button" class="sentinel-chip-btn sentinel-chip-ghost sentinel-action-scale" id="refresh-alert-logs" data-i18n="refresh">Refresh</button>
+          </div>
+          <div id="alert-logs-root" class="sentinel-alert-log-root sentinel-panel sentinel-panel-lift"></div>
+        </section>
+        <section id="dashboard-panel-profile" class="sentinel-dashboard-panel" data-dashboard-panel="profile">
+          <div class="sentinel-toolbar">
+            <h1 class="sentinel-view-title" data-i18n="profileTitle">User Profile</h1>
+          </div>
+          <div class="sentinel-panel sentinel-panel-lift sentinel-profile-card">
+            <div class="sentinel-profile-row"><span data-i18n="profileUsernameLabel">Username</span><strong id="profile-username">—</strong></div>
+            <div class="sentinel-profile-row"><span data-i18n="profileRoleLabel">Role</span><strong id="profile-role">—</strong></div>
+          </div>
+          <div class="sentinel-panel sentinel-panel-lift sentinel-profile-card">
+            <h2 class="sentinel-subpanel-title" data-i18n="profilePasswordHeading">Change password</h2>
+            <form id="profile-password-form" class="sentinel-settings-form">
+              <label class="sentinel-crud-label"><span data-i18n="profileCurrentPassword">Current password</span>
+                <input class="sentinel-field" type="password" id="profile-current-password" autocomplete="current-password" required>
+              </label>
+              <label class="sentinel-crud-label"><span data-i18n="profileNewPassword">New password</span>
+                <input class="sentinel-field" type="password" id="profile-new-password" autocomplete="new-password" required minlength="6">
+              </label>
+              <label class="sentinel-crud-label"><span data-i18n="profileConfirmPassword">Confirm new password</span>
+                <input class="sentinel-field" type="password" id="profile-confirm-password" autocomplete="new-password" required minlength="6">
+              </label>
+              <button type="submit" class="sentinel-chip-btn sentinel-chip-primary" data-i18n="profilePasswordSubmit">Update password</button>
+              <div id="profile-password-status" class="sentinel-form-status" role="status"></div>
+            </form>
+          </div>
+        </section>
+        <section id="dashboard-panel-settings" class="sentinel-dashboard-panel" data-dashboard-panel="settings">
+          <div class="sentinel-toolbar">
+            <h1 class="sentinel-view-title" data-i18n="settingsTitle">System Settings</h1>
+          </div>
+          <div class="sentinel-panel sentinel-panel-lift sentinel-settings-stack">
+            <h2 class="sentinel-subpanel-title" data-i18n="settingsAppearance">Appearance</h2>
+            <label class="sentinel-crud-label"><span data-i18n="settingsThemeLabel">Theme</span>
+              <select id="theme-select" class="sentinel-field">
+                <option value="vibrant_dark" data-i18n="themeVibrantDark">Vibrant Dark</option>
+                <option value="slate_dark" data-i18n="themeSlateDark">Slate Dark</option>
+                <option value="light" data-i18n="themeLight">Light Mode</option>
+              </select>
+            </label>
+            <p class="sentinel-settings-note" data-i18n="settingsThemeHint">Theme is saved to your account.</p>
+          </div>
+          <div class="sentinel-panel sentinel-panel-lift sentinel-settings-stack">
+            <h2 class="sentinel-subpanel-title" data-i18n="settingsTelegramHeading">Telegram delivery</h2>
+            <label class="sentinel-crud-label"><span data-i18n="settingsTelegramToken">Bot token</span>
+              <input class="sentinel-field" type="password" id="system-telegram-token" autocomplete="off">
+            </label>
+            <label class="sentinel-crud-label"><span data-i18n="settingsTelegramChat">Chat ID</span>
+              <input class="sentinel-field" type="text" id="system-telegram-chat" autocomplete="off">
+            </label>
+            <button type="button" class="sentinel-chip-btn sentinel-chip-primary" id="system-settings-save" data-i18n="settingsSaveTelegram">Save Telegram settings</button>
+            <div id="system-settings-status" class="sentinel-form-status" role="status"></div>
+            <p class="sentinel-settings-note" data-i18n="settingsTelegramAdminNote">Only administrators can change Telegram credentials.</p>
+          </div>
+          <div class="sentinel-panel sentinel-panel-lift sentinel-settings-stack">
+            <h2 class="sentinel-subpanel-title" data-i18n="auditTrailTitle">Audit trail</h2>
+            <button type="button" class="sentinel-chip-btn sentinel-chip-ghost sentinel-action-scale" id="refresh-audit-trail" data-i18n="refresh">Refresh</button>
+            <div id="audit-trail-root" class="sentinel-audit-trail-root"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="discovery-modal" class="sentinel-modal" aria-hidden="true">
+    <div class="sentinel-modal-backdrop" data-discovery-dismiss></div>
+    <div class="sentinel-modal-panel sentinel-panel-lift sentinel-fade-up" role="dialog" aria-modal="true">
+      <div class="sentinel-modal-header">
+        <div>
+          <div class="sentinel-modal-kicker" data-i18n="discoveryKicker">Subnet sweep</div>
+          <div class="sentinel-modal-title" data-i18n="discoveryTitle">Auto-Discovery</div>
+        </div>
+        <button type="button" class="sentinel-modal-close sentinel-action-scale" id="discovery-dismiss" data-i18n="closeModal">Close</button>
+      </div>
+      <label class="sentinel-crud-label"><span data-i18n="discoveryCidrLabel">CIDR</span>
+        <input id="discovery-cidr-input" class="sentinel-field" type="text" data-i18n-placeholder="discoveryCidrPlaceholder" placeholder="">
+      </label>
+      <div class="sentinel-host-crud-actions">
+        <button type="button" class="sentinel-chip-btn sentinel-chip-primary" id="discovery-run-btn" data-i18n="discoveryRun">Scan subnet</button>
+        <button type="button" class="sentinel-chip-btn sentinel-chip-ghost" id="discovery-import-btn" data-i18n="discoveryImport">Import selected</button>
+      </div>
+      <div id="discovery-results" class="sentinel-discovery-results"></div>
+    </div>
+  </div>
+
+  <div id="host-crud-modal" class="sentinel-modal sentinel-host-crud-modal" aria-hidden="true">
+    <div class="sentinel-modal-backdrop" data-host-crud-dismiss></div>
+    <div class="sentinel-modal-panel sentinel-host-crud-panel sentinel-panel-lift sentinel-fade-up" role="dialog" aria-modal="true">
+      <div class="sentinel-modal-header">
+        <div>
+          <div class="sentinel-modal-kicker" data-i18n="hostCrudKicker">Host configuration</div>
+          <div class="sentinel-modal-title" id="host-crud-modal-title">Add host</div>
+        </div>
+        <button type="button" class="sentinel-modal-close sentinel-action-scale" id="host-crud-dismiss" data-i18n="closeModal">Close</button>
+      </div>
+      <div class="sentinel-host-crud-grid">
+        <input id="host-id" class="sentinel-field" type="hidden" value="">
+        <label class="sentinel-crud-label"><span data-i18n="hostname">Hostname</span>
+          <input id="host-hostname" class="sentinel-field sentinel-action-scale" type="text" data-i18n-placeholder="hostHostnamePlaceholder" placeholder="">
+        </label>
+        <label class="sentinel-crud-label"><span data-i18n="ip">IP</span>
+          <input id="host-ip" class="sentinel-field sentinel-action-scale" type="text" data-i18n-placeholder="hostIpPlaceholder" placeholder="">
+        </label>
+        <label class="sentinel-crud-label"><span data-i18n="deviceType">Device Type</span>
+          <select id="host-device-type" class="sentinel-field sentinel-action-scale">
+            <option value="Server" data-i18n="deviceServer">Server</option>
+            <option value="Switch" data-i18n="deviceSwitch">Switch</option>
+            <option value="VM" data-i18n="deviceVm">VM</option>
+            <option value="Website" data-i18n="deviceWebsite">Website</option>
+          </select>
+        </label>
+        <div id="ssh-credentials-group" class="sentinel-crud-span sentinel-ssh-credentials-group">
+          <label class="sentinel-crud-label"><span data-i18n="sshUsernameLabel">SSH username</span>
+            <input id="host-ssh-username" class="sentinel-field sentinel-action-scale" type="text" autocomplete="off">
+          </label>
+          <label class="sentinel-crud-label"><span data-i18n="sshPasswordLabel">SSH password</span>
+            <input id="host-ssh-password" class="sentinel-field sentinel-action-scale" type="password" autocomplete="new-password" data-i18n-placeholder="sshPasswordPlaceholder" placeholder="">
+          </label>
+          <label class="sentinel-crud-label"><span data-i18n="sshPortLabel">SSH port</span>
+            <input id="host-ssh-port" class="sentinel-field sentinel-action-scale" type="number" min="1" max="65535" value="22">
+          </label>
+        </div>
+        <label class="sentinel-crud-label"><span data-i18n="pollingIntervalLabel">Polling interval</span>
+          <select id="host-poll-interval" class="sentinel-field sentinel-action-scale">
+            <option value="15" data-i18n="interval15">15 seconds</option>
+            <option value="30" data-i18n="interval30">30 seconds</option>
+            <option value="60" data-i18n="interval60">60 seconds</option>
+            <option value="300" data-i18n="interval300">5 minutes</option>
+          </select>
+        </label>
+        <label class="sentinel-crud-label"><span data-i18n="pollProtocolLabel">Protocol</span>
+          <select id="host-poll-protocol" class="sentinel-field sentinel-action-scale">
+            <option value="SNMP" data-i18n="protocolSnmp">SNMP</option>
+            <option value="SSH" data-i18n="protocolSsh">SSH</option>
+            <option value="HTTP" data-i18n="protocolHttp">HTTP</option>
+            <option value="HTTPS" data-i18n="protocolHttps">HTTPS</option>
+          </select>
+        </label>
+        <div id="snmp-community-group" class="sentinel-crud-span sentinel-snmp-community-group">
+          <label class="sentinel-crud-label"><span data-i18n="snmpVersionLabel">SNMP VERSION</span>
+            <select id="host-snmp-version" name="snmp_version" class="sentinel-field sentinel-action-scale">
+              <option value="v2c" data-i18n="snmpVersionV2c">v2c</option>
+              <option value="v3" data-i18n="snmpVersionV3">v3</option>
+            </select>
+          </label>
+          <div id="snmp-v2c-community-wrap" class="sentinel-snmp-v2c-subgrid">
+            <label class="sentinel-crud-label"><span data-i18n="snmpCommunityLabel">SNMP COMMUNITY STRING</span>
+              <input id="host-snmp-community" name="snmp_community" class="sentinel-field sentinel-action-scale" type="text" autocomplete="off" data-i18n-placeholder="snmpCommunityPlaceholder" placeholder="">
+            </label>
+          </div>
+          <label class="sentinel-crud-label"><span data-i18n="snmpPortLabel">SNMP PORT</span>
+            <input id="host-snmp-port" name="snmp_port" class="sentinel-field sentinel-action-scale" type="number" min="1" max="65535" value="161">
+          </label>
+          <div id="snmp-v3-credentials-group" class="sentinel-snmp-v3-credentials-group" style="display:none">
+            <label class="sentinel-crud-label"><span data-i18n="snmpv3UserLabel">SNMPv3 username</span>
+              <input id="host-snmpv3-user" name="snmpv3_user" class="sentinel-field sentinel-action-scale" type="text" autocomplete="off">
+            </label>
+            <label class="sentinel-crud-label"><span data-i18n="snmpv3AuthAlgoLabel">Auth algorithm</span>
+              <select id="host-snmpv3-auth-algo" name="snmpv3_auth_algo" class="sentinel-field sentinel-action-scale">
+                <option value="MD5">MD5</option>
+                <option value="SHA">SHA</option>
+              </select>
+            </label>
+            <label class="sentinel-crud-label"><span data-i18n="snmpv3AuthKeyLabel">Auth password</span>
+              <input id="host-snmpv3-auth-key" name="snmpv3_auth_key" class="sentinel-field sentinel-action-scale" type="password" autocomplete="new-password">
+            </label>
+            <label class="sentinel-crud-label"><span data-i18n="snmpv3PrivAlgoLabel">Privacy algorithm</span>
+              <select id="host-snmpv3-priv-algo" name="snmpv3_priv_algo" class="sentinel-field sentinel-action-scale">
+                <option value="DES">DES</option>
+                <option value="AES">AES</option>
+              </select>
+            </label>
+            <label class="sentinel-crud-label"><span data-i18n="snmpv3PrivKeyLabel">Privacy password</span>
+              <input id="host-snmpv3-priv-key" name="snmpv3_priv_key" class="sentinel-field sentinel-action-scale" type="password" autocomplete="new-password">
+            </label>
+          </div>
+        </div>
+        <label class="sentinel-crud-label sentinel-crud-span" style="display:flex;align-items:center;gap:10px;">
+          <input type="checkbox" id="host-maintenance-mode" style="width:auto;height:auto;">
+          <span data-i18n="maintenanceModeLabel">Maintenance mode</span>
+        </label>
+        <label class="sentinel-vendor-label sentinel-crud-span" data-i18n="vendorProfileLabel">Hardware SNMP profile</label>
+        <select id="host-vendor-template" class="sentinel-field sentinel-vendor-select sentinel-action-scale sentinel-crud-span" name="vendor_template">
+          <optgroup data-i18n-optgroup="optgroupDellEmc" label="Dell EMC">
+            <option value="dell_pe_idrac7_8">PowerEdge iDRAC 7/8 (DRAC-MIB 10892.5)</option>
+            <option value="dell_pe_idrac9">PowerEdge iDRAC 9 (DRAC-MIB 10892.5)</option>
+            <option value="dell_powervault_md">PowerVault Modular Disk (MD) SNMP 10893</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupDellNetworking" label="Dell Networking">
+            <option value="dell_force10_ftos">Force10 / OS10 FTOS (DNOS)</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupCisco" label="Cisco">
+            <option value="cisco_asa_firepower">ASA / Firepower Threat Defense SNMP</option>
+            <option value="cisco_cat_iosxe">Catalyst IOS-XE (cpmCPUTotal5minRev)</option>
+            <option value="cisco_nexus_nxos">Nexus NX-OS Data Center</option>
+            <option value="cisco_ucs_fi">UCS Fabric Interconnect (CISCO-UNIFIED-COMPUTING-MIB)</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupHPE" label="HPE">
+            <option value="hpe_procurve_aruba_global">HP ProCurve / ArubaOS Global</option>
+            <option value="hpe_officeconnect_1920s">HPE OfficeConnect 1920S Switch</option>
+            <option value="hpe_switch_rfc1213">Generic HP Enterprise Switch</option>
+            <option value="hh3c_comware_hh3c">HP Comware HH3C</option>
+            <option value="hpe_procurve">ProCurve / ArubaOS-Switch legacy</option>
+            <option value="hpe_ilo4_gen89">ProLiant iLO 4 (Gen8/9) CPQHEALTH</option>
+            <option value="hpe_ilo5_gen1011">ProLiant iLO 5 (Gen10/11) CPQHEALTH</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupHPEAruba" label="HPE Aruba">
+            <option value="hpe_arubaos_cx">ArubaOS-CX / AOS-Switch modern</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupArista" label="Arista">
+            <option value="arista_eos_snmp">Arista EOS by SNMP</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupJuniper" label="Juniper">
+            <option value="juniper_junos_exsrx">Junos EX/SRX Routing Engine</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupMikroTik" label="MikroTik">
+            <option value="mikrotik_routeros">RouterOS MIKROTIK-MIB</option>
+            <option value="mikrotik_by_snmp">MikroTik by SNMP</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupDLink" label="D-Link">
+            <option value="dlink_global">D-Link Global</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupFortinet" label="Fortinet">
+            <option value="fortinet_fortios">FortiGate FortiOS</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupPaloAlto" label="Palo Alto Networks">
+            <option value="paloalto_panos">PAN-OS NGFW</option>
+            <option value="paloalto_panos_enterprise">Palo Alto PAN-OS</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupUbiquiti" label="Ubiquiti">
+            <option value="ubiquiti_edgemax">EdgeMAX / EdgeRouter SNMP</option>
+            <option value="ubiquiti_unifi_ap">UniFi AP / controller-reported style HOST-RESOURCES</option>
+            <option value="ubiquiti_unifi_edgeswitch">Ubiquiti UniFi/EdgeSwitch</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupVMware" label="VMware">
+            <option value="vmware_esxi_snmp">ESXi HOST-RESOURCES + VMWARE-ENV-MIB</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupNetApp" label="NetApp">
+            <option value="netapp_ontap_snmp">ONTAP SNMP (NETAPP-MIB df + host-resources)</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupApc" label="APC">
+            <option value="apc_smart_ups">APC Smart-UPS (PowerNet-MIB)</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupSynology" label="Synology">
+            <option value="synology_dsm">DSM HOST-RESOURCES + SYNOLOGY-SYSTEM-MIB</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupGenericOs" label="Generic OS">
+            <option value="generic_linux_net_snmp">Linux net-snmp UCD-SNMP-MIB</option>
+            <option value="generic_windows_snmp">Windows Server SNMP Service</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="sentinel-host-crud-actions">
+        <button type="button" class="sentinel-chip-btn sentinel-chip-primary sentinel-action-scale" id="host-crud-save" data-i18n="saveHost">Save</button>
+        <button type="button" class="sentinel-chip-btn sentinel-chip-ghost sentinel-action-scale" id="host-crud-cancel" data-i18n="cancelModal">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="host-metrics-modal" class="sentinel-modal" aria-hidden="true">
+    <div class="sentinel-modal-backdrop" data-dismiss-modal></div>
+    <div class="sentinel-modal-panel sentinel-panel-lift sentinel-fade-up" role="dialog">
+      <div class="sentinel-modal-header">
+        <div>
+          <div class="sentinel-modal-kicker" data-i18n="hostInsightKicker">Host insight</div>
+          <div class="sentinel-modal-title" id="host-modal-heading">—</div>
+        </div>
+        <button type="button" class="sentinel-modal-close sentinel-action-scale" id="host-modal-dismiss" data-i18n="closeModal">Close</button>
+      </div>
+      <div class="sentinel-modal-controls">
+        <label class="sentinel-control">
+          <span data-i18n="metricPickerLabel">Metric</span>
+          <select id="host-metric-scope" class="sentinel-field"></select>
+        </label>
+        <label class="sentinel-control">
+          <span data-i18n="chartStartLabel">Start</span>
+          <input type="datetime-local" id="host-metric-start" class="sentinel-field sentinel-action-scale">
+        </label>
+        <label class="sentinel-control">
+          <span data-i18n="chartEndLabel">End</span>
+          <input type="datetime-local" id="host-metric-end" class="sentinel-field sentinel-action-scale">
+        </label>
+        <button type="button" class="sentinel-chip-btn sentinel-chip-primary sentinel-action-scale" id="host-metric-refresh" data-i18n="loadHistory">Load</button>
+      </div>
+      <div id="host-website-http-banner" style="display:none;margin:0 0 12px 0;font-weight:800;font-size:0.95rem;"></div>
+      <div class="sentinel-chart-box">
+        <canvas id="host-metric-chart" height="120"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

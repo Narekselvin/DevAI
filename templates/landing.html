@@ -3,11 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Infrastructure Sentinel</title>
+  <title>DevAI</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body data-page="landing" class="sentinel-body-offset">
   <div class="sentinel-landing-topbar">
+    <a class="sentinel-quiet-link sentinel-action-scale" href="{{ url_for('logout_route') }}">Sign out</a>
     <select id="language-select" class="sentinel-field sentinel-focus-pulse">
       <option value="en">English</option>
       <option value="ru">Русский</option>
@@ -21,7 +22,7 @@
         <div class="sentinel-route-sub" data-i18n="landingAuditSubtitle">Run smart scanning with noise reduction and AI remediation</div>
       </a>
       <a class="sentinel-route-card sentinel-action-scale" href="/monitoring">
-        <div class="sentinel-route-title" data-i18n="landingMonitoringTitle">Infrastructure Sentinel Console</div>
+        <div class="sentinel-route-title" data-i18n="landingMonitoringTitle">DevAI Console</div>
         <div class="sentinel-route-sub" data-i18n="landingMonitoringSubtitle">Hosted observability cockpit with multilingual AI decisions</div>
       </a>
     </div>

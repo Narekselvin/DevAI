@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title data-i18n="documentMonitoringTitle">Infrastructure Sentinel Vigil Console</title>
+  <title data-i18n="documentMonitoringTitle">DevAI Vigil Console</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 </head>
@@ -13,12 +14,13 @@
       <div class="sentinel-brand">
         <div class="sentinel-brand-mark"></div>
         <div class="sentinel-brand-text">
-          <div class="sentinel-brand-title" data-i18n="brandTitle">Infrastructure Sentinel</div>
+          <div class="sentinel-brand-title" data-i18n="brandTitle">DevAI</div>
           <div class="sentinel-brand-caption" data-i18n="monitoringSubtitle">Localized AI auditing and observability</div>
         </div>
       </div>
       <div class="sentinel-sidebar-actions">
-        <a class="sentinel-quiet-link sentinel-focus-pulse" href="/" data-i18n="backToLanding">Back</a>
+        <a class="sentinel-quiet-link sentinel-focus-pulse" href="{{ url_for('dashboard') }}" data-i18n="backToLanding">Back</a>
+        <a class="sentinel-quiet-link sentinel-focus-pulse" href="{{ url_for('logout_route') }}" data-i18n="logoutLink">Sign out</a>
         <select id="language-select" class="sentinel-field sentinel-focus-pulse">
           <option value="en">English</option>
           <option value="ru">Русский</option>
@@ -36,23 +38,9 @@
       <section id="view-hosts" class="sentinel-view view active sentinel-stagger-enter">
         <div class="sentinel-toolbar">
           <h1 class="sentinel-view-title" data-i18n="hostsTitle">Hosts</h1>
-          <button type="button" class="sentinel-chip-btn sentinel-chip-primary sentinel-action-scale" id="refresh-hosts" data-i18n="refresh">Refresh</button>
-        </div>
-        <div class="sentinel-panel sentinel-panel-lift sentinel-fade-up">
-          <div class="sentinel-host-form-grid">
-            <input id="host-id" class="sentinel-field" type="text" disabled data-i18n-placeholder="hostInternalIdPlaceholder" placeholder="">
-            <select id="host-device-type" class="sentinel-field sentinel-action-scale">
-              <option value="Server" data-i18n="deviceServer">Server</option>
-              <option value="Switch" data-i18n="deviceSwitch">Switch</option>
-              <option value="VM" data-i18n="deviceVm">VM</option>
-            </select>
-            <input id="host-hostname" class="sentinel-field sentinel-action-scale" type="text" data-i18n-placeholder="hostHostnamePlaceholder" placeholder="">
-            <input id="host-ip" class="sentinel-field sentinel-action-scale" type="text" data-i18n-placeholder="hostIpPlaceholder" placeholder="">
-          </div>
-          <div class="sentinel-form-actions">
-            <button type="button" class="sentinel-chip-btn sentinel-chip-primary sentinel-action-scale" id="create-host" data-i18n="addHost">Add</button>
-            <button type="button" class="sentinel-chip-btn sentinel-chip-warn sentinel-action-scale" id="update-host" data-i18n="updateHost">Update</button>
-            <button type="button" class="sentinel-chip-btn sentinel-chip-ghost sentinel-action-scale" id="clear-host" data-i18n="clear">Clear</button>
+          <div class="sentinel-toolbar-group">
+            <button type="button" class="sentinel-chip-btn sentinel-chip-primary sentinel-action-scale" id="open-host-crud-empty" data-i18n="addHostModal">Add host</button>
+            <button type="button" class="sentinel-chip-btn sentinel-chip-ghost sentinel-action-scale" id="refresh-hosts" data-i18n="refresh">Refresh</button>
           </div>
         </div>
         <div class="sentinel-panel sentinel-panel-lift sentinel-table-wrap sentinel-fade-up">
@@ -62,7 +50,10 @@
                 <th>ID</th>
                 <th data-i18n="hostname">Hostname</th>
                 <th data-i18n="ip">IP</th>
+                <th data-i18n="vendorProfileLabel">Profile</th>
                 <th data-i18n="deviceType">Device Type</th>
+                <th data-i18n="pollingIntervalLabel">Interval</th>
+                <th data-i18n="pollProtocolLabel">Protocol</th>
                 <th id="hosts-temperature-heading" data-i18n="temp">Temp C</th>
                 <th data-i18n="dateAdded">Date Added</th>
                 <th data-i18n="actions">Actions</th>
@@ -89,9 +80,111 @@
           <h1 class="sentinel-view-title sentinel-title-ai-wash" data-i18n="aiDecisionsTitle">AI Decisions</h1>
           <button type="button" class="sentinel-chip-btn sentinel-chip-ai sentinel-action-scale" id="refresh-ai" data-i18n="refresh">Refresh</button>
         </div>
-        <div id="ai-decisions" class="sentinel-ai-stack"></div>
+        <div id="ai-decisions" class="sentinel-ai-stack sentinel-ai-terminal"></div>
       </section>
     </main>
+  </div>
+
+  <div id="host-crud-modal" class="sentinel-modal sentinel-host-crud-modal" aria-hidden="true">
+    <div class="sentinel-modal-backdrop" data-host-crud-dismiss></div>
+    <div class="sentinel-modal-panel sentinel-host-crud-panel sentinel-panel-lift sentinel-fade-up" role="dialog" aria-modal="true">
+      <div class="sentinel-modal-header">
+        <div>
+          <div class="sentinel-modal-kicker" data-i18n="hostCrudKicker">Host configuration</div>
+          <div class="sentinel-modal-title" id="host-crud-modal-title">Add host</div>
+        </div>
+        <button type="button" class="sentinel-modal-close sentinel-action-scale" id="host-crud-dismiss" data-i18n="closeModal">Close</button>
+      </div>
+      <div class="sentinel-host-crud-grid">
+        <input id="host-id" class="sentinel-field" type="hidden" value="">
+        <label class="sentinel-crud-label"><span data-i18n="hostname">Hostname</span>
+          <input id="host-hostname" class="sentinel-field sentinel-action-scale" type="text" data-i18n-placeholder="hostHostnamePlaceholder" placeholder="">
+        </label>
+        <label class="sentinel-crud-label"><span data-i18n="ip">IP</span>
+          <input id="host-ip" class="sentinel-field sentinel-action-scale" type="text" data-i18n-placeholder="hostIpPlaceholder" placeholder="">
+        </label>
+        <label class="sentinel-crud-label"><span data-i18n="deviceType">Device Type</span>
+          <select id="host-device-type" class="sentinel-field sentinel-action-scale">
+            <option value="Server" data-i18n="deviceServer">Server</option>
+            <option value="Switch" data-i18n="deviceSwitch">Switch</option>
+            <option value="VM" data-i18n="deviceVm">VM</option>
+          </select>
+        </label>
+        <label class="sentinel-crud-label"><span data-i18n="pollingIntervalLabel">Polling interval</span>
+          <select id="host-poll-interval" class="sentinel-field sentinel-action-scale">
+            <option value="15" data-i18n="interval15">15 seconds</option>
+            <option value="30" data-i18n="interval30">30 seconds</option>
+            <option value="60" data-i18n="interval60">60 seconds</option>
+            <option value="300" data-i18n="interval300">5 minutes</option>
+          </select>
+        </label>
+        <label class="sentinel-crud-label"><span data-i18n="pollProtocolLabel">Protocol</span>
+          <select id="host-poll-protocol" class="sentinel-field sentinel-action-scale">
+            <option value="SNMP" data-i18n="protocolSnmp">SNMP</option>
+            <option value="SSH" data-i18n="protocolSsh">SSH</option>
+            <option value="HTTP" data-i18n="protocolHttp">HTTP</option>
+          </select>
+        </label>
+        <label class="sentinel-vendor-label sentinel-crud-span" data-i18n="vendorProfileLabel">Hardware SNMP profile</label>
+        <select id="host-vendor-template" class="sentinel-field sentinel-vendor-select sentinel-action-scale sentinel-crud-span" name="vendor_template">
+          <optgroup data-i18n-optgroup="optgroupDellEmc" label="Dell EMC">
+            <option value="dell_pe_idrac7_8">PowerEdge iDRAC 7/8 (DRAC-MIB 10892.5)</option>
+            <option value="dell_pe_idrac9">PowerEdge iDRAC 9 (DRAC-MIB 10892.5)</option>
+            <option value="dell_powervault_md">PowerVault Modular Disk (MD) SNMP 10893</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupDellNetworking" label="Dell Networking">
+            <option value="dell_force10_ftos">Force10 / OS10 FTOS (DNOS)</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupCisco" label="Cisco">
+            <option value="cisco_asa_firepower">ASA / Firepower Threat Defense SNMP</option>
+            <option value="cisco_cat_iosxe">Catalyst IOS-XE (cpmCPUTotal5minRev)</option>
+            <option value="cisco_nexus_nxos">Nexus NX-OS Data Center</option>
+            <option value="cisco_ucs_fi">UCS Fabric Interconnect (CISCO-UNIFIED-COMPUTING-MIB)</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupHPE" label="HPE">
+            <option value="hpe_procurve">ProCurve / ArubaOS-Switch legacy</option>
+            <option value="hpe_ilo4_gen89">ProLiant iLO 4 (Gen8/9) CPQHEALTH</option>
+            <option value="hpe_ilo5_gen1011">ProLiant iLO 5 (Gen10/11) CPQHEALTH</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupHPEAruba" label="HPE Aruba">
+            <option value="hpe_arubaos_cx">ArubaOS-CX / AOS-Switch modern</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupJuniper" label="Juniper">
+            <option value="juniper_junos_exsrx">Junos EX/SRX Routing Engine</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupFortinet" label="Fortinet">
+            <option value="fortinet_fortios">FortiGate FortiOS</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupPaloAlto" label="Palo Alto Networks">
+            <option value="paloalto_panos">PAN-OS NGFW</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupMikroTik" label="MikroTik">
+            <option value="mikrotik_routeros">RouterOS MIKROTIK-MIB</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupUbiquiti" label="Ubiquiti">
+            <option value="ubiquiti_edgemax">EdgeMAX / EdgeRouter SNMP</option>
+            <option value="ubiquiti_unifi_ap">UniFi AP / controller-reported style HOST-RESOURCES</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupVMware" label="VMware">
+            <option value="vmware_esxi_snmp">ESXi HOST-RESOURCES + VMWARE-ENV-MIB</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupNetApp" label="NetApp">
+            <option value="netapp_ontap_snmp">ONTAP SNMP (NETAPP-MIB df + host-resources)</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupSynology" label="Synology">
+            <option value="synology_dsm">DSM HOST-RESOURCES + SYNOLOGY-SYSTEM-MIB</option>
+          </optgroup>
+          <optgroup data-i18n-optgroup="optgroupGenericOs" label="Generic OS">
+            <option value="generic_linux_net_snmp">Linux net-snmp UCD-SNMP-MIB</option>
+            <option value="generic_windows_snmp">Windows Server SNMP Service</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="sentinel-host-crud-actions">
+        <button type="button" class="sentinel-chip-btn sentinel-chip-primary sentinel-action-scale" id="host-crud-save" data-i18n="saveHost">Save</button>
+        <button type="button" class="sentinel-chip-btn sentinel-chip-ghost sentinel-action-scale" id="host-crud-cancel" data-i18n="cancelModal">Cancel</button>
+      </div>
+    </div>
   </div>
 
   <div id="host-metrics-modal" class="sentinel-modal" aria-hidden="true">

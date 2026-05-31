@@ -3,13 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Infrastructure Sentinel — Audit Forge</title>
+  <title>DevAI — Audit Forge</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body data-page="audit" class="sentinel-body-offset">
   <header class="sentinel-page-header">
     <div class="sentinel-toolbar-group">
-      <a href="/" class="sentinel-quiet-link sentinel-action-scale" data-i18n="backToLanding">Back</a>
+      <a href="{{ url_for('dashboard') }}" class="sentinel-quiet-link sentinel-action-scale" data-i18n="backToLanding">Back</a>
       <strong data-i18n="auditForgeTitle">Audit Forge</strong>
     </div>
     <div class="sentinel-toolbar-group">

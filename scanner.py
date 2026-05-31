@@ -142,6 +142,30 @@ def collect_remote_subnet_tcp_records(cidr_string):
     return discovered_records
 
 
+def _is_loopback_bind_address(ip_value):
+    token = str(ip_value or '').strip().lower()
+    if token in ('127.0.0.1', '::1', 'localhost'):
+        return True
+    if token.startswith('127.'):
+        return True
+    return False
+
+
+def _is_allowed_listen_bind_address(ip_value):
+    if _is_loopback_bind_address(ip_value):
+        return False
+    token = str(ip_value or '').strip().lower()
+    if token in ('0.0.0.0', '::', ''):
+        return True
+    try:
+        parsed = ipaddress.ip_address(token)
+        if parsed.is_loopback:
+            return False
+        return True
+    except ValueError:
+        return False
+
+
 def collect_listening_socket_records():
     records = []
     seen_pairs = set()
@@ -154,6 +178,8 @@ def collect_listening_socket_records():
             continue
         port_value = int(local_address.port)
         ip_value = local_address.ip
+        if not _is_allowed_listen_bind_address(ip_value):
+            continue
         protocol_name = 'tcp' if network_connection.type == socket.SOCK_STREAM else 'udp'
         dedupe_key = (ip_value, port_value, protocol_name)
         if dedupe_key in seen_pairs:

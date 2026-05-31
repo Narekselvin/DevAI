@@ -95,12 +95,14 @@ def initialize_schema(connection):
         'id INTEGER PRIMARY KEY AUTOINCREMENT,'
         'host_id INTEGER NOT NULL,'
         'status TEXT NOT NULL,'
-        'cpu_utilization INTEGER NOT NULL,'
-        'ram_usage INTEGER NOT NULL,'
-        'disk_usage INTEGER NOT NULL,'
-        'temperature_c INTEGER NOT NULL,'
+        'cpu_utilization INTEGER,'
+        'ram_usage INTEGER,'
+        'disk_usage INTEGER,'
+        'temperature_c INTEGER,'
         'mock_data INTEGER NOT NULL,'
         'polled_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,'
+        'latency_ms INTEGER,'
+        'http_status_code INTEGER,'
         'FOREIGN KEY (host_id) REFERENCES hosts(id)'
         ')'
     )
@@ -125,7 +127,565 @@ def initialize_schema(connection):
         'UNIQUE(dependent_host_id, depends_on_host_id)'
         ')'
     )
+    _ensure_hosts_vendor_template_column(connection)
+    _ensure_hosts_poll_columns(connection)
+    _ensure_system_settings_table(connection)
+    _ensure_users_and_auth_tables(connection)
+    _ensure_user_settings_table(connection)
+    _ensure_alert_logs_table(connection)
+    _ensure_action_audit_log_table(connection)
+    _ensure_hosts_ssh_columns(connection)
+    _ensure_hosts_snmp_community_column(connection)
+    _ensure_hosts_snmp_port_column(connection)
+    _ensure_hosts_snmpv3_columns(connection)
+    _ensure_hosts_maintenance_mode_column(connection)
+    _ensure_hosts_last_error_message_column(connection)
+    _ensure_system_manuals_schema(connection)
     _ensure_hardware_playbooks_script_column(connection)
+    _ensure_metrics_history_nullable_schema(connection)
+    connection.commit()
+
+
+def _ensure_hosts_vendor_template_column(connection):
+    cursor = connection.cursor()
+    cursor.execute('PRAGMA table_info(hosts)')
+    column_names = {row[1] for row in cursor.fetchall()}
+    if 'vendor_template' not in column_names:
+        connection.execute("ALTER TABLE hosts ADD COLUMN vendor_template TEXT NOT NULL DEFAULT 'generic_linux_net_snmp'")
+        connection.commit()
+
+
+def _ensure_hosts_poll_columns(connection):
+    cursor = connection.cursor()
+    cursor.execute('PRAGMA table_info(hosts)')
+    column_names = {row[1] for row in cursor.fetchall()}
+    if 'polling_interval_seconds' not in column_names:
+        connection.execute('ALTER TABLE hosts ADD COLUMN polling_interval_seconds INTEGER NOT NULL DEFAULT 60')
+        connection.commit()
+    if 'poll_protocol' not in column_names:
+        connection.execute("ALTER TABLE hosts ADD COLUMN poll_protocol TEXT NOT NULL DEFAULT 'SNMP'")
+        connection.commit()
+
+
+def _ensure_system_settings_table(connection):
+    connection.execute(
+        'CREATE TABLE IF NOT EXISTS system_settings ('
+        'setting_key TEXT PRIMARY KEY NOT NULL,'
+        'setting_value TEXT NOT NULL DEFAULT \'\''
+        ')'
+    )
+    connection.commit()
+
+
+def _ensure_users_and_auth_tables(connection):
+    connection.execute(
+        'CREATE TABLE IF NOT EXISTS users ('
+        'user_id INTEGER PRIMARY KEY AUTOINCREMENT,'
+        'username TEXT UNIQUE NOT NULL,'
+        'password_hash TEXT NOT NULL,'
+        'role TEXT NOT NULL DEFAULT \'User\''
+        ')'
+    )
+    connection.commit()
+
+
+def _ensure_user_settings_table(connection):
+    connection.execute(
+        'CREATE TABLE IF NOT EXISTS user_settings ('
+        'user_id INTEGER PRIMARY KEY NOT NULL,'
+        'theme_choice TEXT NOT NULL DEFAULT \'vibrant_dark\','
+        'default_language TEXT NOT NULL DEFAULT \'en\','
+        'sidebar_collapsed INTEGER NOT NULL DEFAULT 0,'
+        'FOREIGN KEY (user_id) REFERENCES users(user_id)'
+        ')'
+    )
+    connection.commit()
+
+
+def _ensure_alert_logs_table(connection):
+    connection.execute(
+        'CREATE TABLE IF NOT EXISTS alert_logs ('
+        'log_id INTEGER PRIMARY KEY AUTOINCREMENT,'
+        'timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,'
+        'host_id INTEGER,'
+        'alert_type TEXT NOT NULL,'
+        'message_text TEXT NOT NULL,'
+        'delivery_status TEXT NOT NULL'
+        ')'
+    )
+    connection.commit()
+
+
+def _ensure_action_audit_log_table(connection):
+    connection.execute(
+        'CREATE TABLE IF NOT EXISTS action_audit_log ('
+        'id INTEGER PRIMARY KEY AUTOINCREMENT,'
+        'timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,'
+        'username TEXT NOT NULL,'
+        'action_description TEXT NOT NULL'
+        ')'
+    )
+    connection.commit()
+
+
+def _ensure_hosts_ssh_columns(connection):
+    cursor = connection.cursor()
+    cursor.execute('PRAGMA table_info(hosts)')
+    column_names = {row[1] for row in cursor.fetchall()}
+    if 'ssh_username' not in column_names:
+        connection.execute("ALTER TABLE hosts ADD COLUMN ssh_username TEXT NOT NULL DEFAULT ''")
+        connection.commit()
+    if 'ssh_password' not in column_names:
+        connection.execute("ALTER TABLE hosts ADD COLUMN ssh_password TEXT NOT NULL DEFAULT ''")
+        connection.commit()
+    if 'ssh_port' not in column_names:
+        connection.execute('ALTER TABLE hosts ADD COLUMN ssh_port INTEGER NOT NULL DEFAULT 22')
+        connection.commit()
+
+
+def _ensure_hosts_snmp_community_column(connection):
+    cursor = connection.cursor()
+    cursor.execute('PRAGMA table_info(hosts)')
+    column_names = {row[1] for row in cursor.fetchall()}
+    if 'snmp_community' not in column_names:
+        connection.execute("ALTER TABLE hosts ADD COLUMN snmp_community TEXT NOT NULL DEFAULT 'public'")
+        connection.commit()
+
+
+def _ensure_hosts_snmp_port_column(connection):
+    cursor = connection.cursor()
+    cursor.execute('PRAGMA table_info(hosts)')
+    column_names = {row[1] for row in cursor.fetchall()}
+    if 'snmp_port' not in column_names:
+        connection.execute('ALTER TABLE hosts ADD COLUMN snmp_port INTEGER NOT NULL DEFAULT 161')
+        connection.commit()
+
+
+def _ensure_hosts_snmpv3_columns(connection):
+    cursor = connection.cursor()
+    cursor.execute('PRAGMA table_info(hosts)')
+    column_names = {row[1] for row in cursor.fetchall()}
+    if 'snmp_version' not in column_names:
+        connection.execute("ALTER TABLE hosts ADD COLUMN snmp_version TEXT NOT NULL DEFAULT 'v2c'")
+        connection.commit()
+    if 'snmpv3_user' not in column_names:
+        connection.execute("ALTER TABLE hosts ADD COLUMN snmpv3_user TEXT NOT NULL DEFAULT ''")
+        connection.commit()
+    if 'snmpv3_auth_algo' not in column_names:
+        connection.execute("ALTER TABLE hosts ADD COLUMN snmpv3_auth_algo TEXT NOT NULL DEFAULT 'SHA'")
+        connection.commit()
+    if 'snmpv3_auth_key' not in column_names:
+        connection.execute("ALTER TABLE hosts ADD COLUMN snmpv3_auth_key TEXT NOT NULL DEFAULT ''")
+        connection.commit()
+    if 'snmpv3_priv_algo' not in column_names:
+        connection.execute("ALTER TABLE hosts ADD COLUMN snmpv3_priv_algo TEXT NOT NULL DEFAULT 'AES'")
+        connection.commit()
+    if 'snmpv3_priv_key' not in column_names:
+        connection.execute("ALTER TABLE hosts ADD COLUMN snmpv3_priv_key TEXT NOT NULL DEFAULT ''")
+        connection.commit()
+
+
+def normalize_ssh_storage_triplet(device_type, ssh_username, ssh_password, ssh_port_raw):
+    if str(device_type or '') in ('Switch', 'Website'):
+        return '', '', 22
+    username_clean = str(ssh_username or '').strip()
+    password_clean = '' if ssh_password is None else str(ssh_password)
+    try:
+        port_int = int(ssh_port_raw)
+    except Exception:
+        port_int = 22
+    if port_int <= 0 or port_int > 65535:
+        port_int = 22
+    return username_clean, password_clean, port_int
+
+
+def _ensure_hosts_last_error_message_column(connection):
+    cursor = connection.cursor()
+    cursor.execute('PRAGMA table_info(hosts)')
+    column_names = {row[1] for row in cursor.fetchall()}
+    if 'last_error_message' not in column_names:
+        connection.execute("ALTER TABLE hosts ADD COLUMN last_error_message TEXT NOT NULL DEFAULT ''")
+        connection.commit()
+
+
+def _seed_vendor_playbooks(cursor):
+    cursor.execute('SELECT COUNT(*) FROM vulnerability_playbooks')
+    if cursor.fetchone()[0] > 0:
+        return
+    rows = [
+        (
+            'hpe officeconnect switch snmp',
+            'HPE-OFFICECONNECT-SNMP',
+            "Default SNMP strings often left as 'public'. Manual requires SNMPv3 migration or strictly applying ACLs to UDP 161. Ref: HPE OfficeConnect Security Guide.",
+            "Строки SNMP по умолчанию часто остаются 'public'. Руководство требует миграции на SNMPv3 или строгих ACL для UDP 161. См.: HPE OfficeConnect Security Guide.",
+            "SNMP լռելյայն տողերը հաճախ մնում են 'public'. Ձեռնարկը պահանջում է SNMPv3 միգրացիա կամ UDP 161-ի ACL-ներ: Ref: HPE OfficeConnect Security Guide.",
+            '$ProgressPreference = \'SilentlyContinue\'; Get-NetFirewallRule | Where-Object {$_.DisplayName -like \'*SNMP*\'}',
+        ),
+        (
+            'mikrotik routeros winbox',
+            'MIKROTIK-WINBOX-EXPOSURE',
+            'Winbox port 8291 exposed. Ensure IP whitelisting in /ip services. Ref: MikroTik Hardening Guide.',
+            'Порт Winbox 8291 открыт. Настройте белый список IP в /ip services. См.: MikroTik Hardening Guide.',
+            'Winbox 8291 պորտը բաց է: Կարգավորեք IP whitelist /ip services-ում: Ref: MikroTik Hardening Guide.',
+            '/ip service print',
+        ),
+        (
+            'apc smart-ups nmc default',
+            'APC-NMC-DEFAULT-CREDS',
+            "Default NMC credentials 'apc/apc' must be changed immediately via SSH. Ref: APC Network Management Card Manual.",
+            "Учетные данные NMC по умолчанию 'apc/apc' необходимо немедленно сменить через SSH. См.: APC Network Management Card Manual.",
+            "NMC լռելյայն 'apc/apc' հավատարմագրերը պետք է անմիջապես փոխել SSH-ով: Ref: APC Network Management Card Manual.",
+            'ssh admin@ups-host',
+        ),
+    ]
+    insert_sql = (
+        'INSERT INTO vulnerability_playbooks (match_signature, cve_identifier, advice_en, advice_ru, advice_hy, powershell_script) '
+        'VALUES (?, ?, ?, ?, ?, ?)'
+    )
+    for row in rows:
+        cursor.execute(insert_sql, row)
+
+
+def _ensure_hosts_maintenance_mode_column(connection):
+    cursor = connection.cursor()
+    cursor.execute('PRAGMA table_info(hosts)')
+    column_names = {row[1] for row in cursor.fetchall()}
+    if 'maintenance_mode' not in column_names:
+        connection.execute('ALTER TABLE hosts ADD COLUMN maintenance_mode INTEGER NOT NULL DEFAULT 0')
+        connection.commit()
+
+
+def _metrics_history_requires_nullable_rebuild(connection):
+    cursor = connection.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='metrics_history'")
+    if cursor.fetchone() is None:
+        return False
+    cursor.execute('PRAGMA table_info(metrics_history)')
+    for row in cursor.fetchall():
+        if row[1] == 'cpu_utilization' and int(row[3] or 0) == 1:
+            return True
+    return False
+
+
+def _ensure_metrics_history_nullable_schema(connection):
+    if not _metrics_history_requires_nullable_rebuild(connection):
+        cursor = connection.cursor()
+        cursor.execute('PRAGMA table_info(metrics_history)')
+        names = {row[1] for row in cursor.fetchall()}
+        if 'latency_ms' not in names:
+            connection.execute('ALTER TABLE metrics_history ADD COLUMN latency_ms INTEGER')
+            connection.commit()
+        if 'http_status_code' not in names:
+            connection.execute('ALTER TABLE metrics_history ADD COLUMN http_status_code INTEGER')
+            connection.commit()
+        return
+    connection.execute('ALTER TABLE metrics_history RENAME TO metrics_history_legacy')
+    connection.execute(
+        'CREATE TABLE metrics_history ('
+        'id INTEGER PRIMARY KEY AUTOINCREMENT,'
+        'host_id INTEGER NOT NULL,'
+        'status TEXT NOT NULL,'
+        'cpu_utilization INTEGER,'
+        'ram_usage INTEGER,'
+        'disk_usage INTEGER,'
+        'temperature_c INTEGER,'
+        'mock_data INTEGER NOT NULL,'
+        'polled_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,'
+        'latency_ms INTEGER,'
+        'http_status_code INTEGER,'
+        'FOREIGN KEY (host_id) REFERENCES hosts(id)'
+        ')'
+    )
+    cursor = connection.cursor()
+    cursor.execute('PRAGMA table_info(metrics_history_legacy)')
+    legacy_cols = {row[1] for row in cursor.fetchall()}
+    lat_src = 'latency_ms' if 'latency_ms' in legacy_cols else 'NULL'
+    http_src = 'http_status_code' if 'http_status_code' in legacy_cols else 'NULL'
+    connection.execute(
+        'INSERT INTO metrics_history (host_id, status, cpu_utilization, ram_usage, disk_usage, temperature_c, mock_data, polled_at, latency_ms, http_status_code) '
+        'SELECT host_id, status, cpu_utilization, ram_usage, disk_usage, temperature_c, mock_data, polled_at, '
+        + lat_src
+        + ', '
+        + http_src
+        + ' FROM metrics_history_legacy'
+    )
+    connection.execute('DROP TABLE metrics_history_legacy')
+    connection.commit()
+
+
+def insert_action_audit_log(connection, username, action_description):
+    connection.execute(
+        'INSERT INTO action_audit_log (username, action_description) VALUES (?, ?)',
+        (str(username or ''), str(action_description or '')[:4000]),
+    )
+    connection.commit()
+
+
+def list_action_audit_logs(connection, limit_value=200, viewer_username=None, viewer_role=None):
+    cursor = connection.cursor()
+    limit_int = max(1, min(int(limit_value or 200), 500))
+    if str(viewer_role or '') == 'Admin':
+        cursor.execute(
+            'SELECT id, timestamp, username, action_description FROM action_audit_log '
+            'ORDER BY datetime(timestamp) DESC, id DESC LIMIT ?',
+            (limit_int,),
+        )
+    else:
+        cursor.execute(
+            'SELECT id, timestamp, username, action_description FROM action_audit_log '
+            'WHERE username = ? ORDER BY datetime(timestamp) DESC, id DESC LIMIT ?',
+            (str(viewer_username or ''), limit_int),
+        )
+    rows = []
+    for row_id, ts, uname, desc in cursor.fetchall():
+        rows.append(
+            {
+                'id': int(row_id),
+                'timestamp': str(ts),
+                'username': str(uname or ''),
+                'action_description': str(desc or ''),
+            }
+        )
+    return rows
+
+
+def seed_default_users(connection):
+    from models import hash_password
+
+    cursor = connection.cursor()
+    cursor.execute('SELECT COUNT(*) FROM users')
+    if cursor.fetchone()[0] > 0:
+        return
+    password_hash_value = hash_password('admin')
+    connection.execute(
+        "INSERT INTO users (username, password_hash, role) VALUES ('admin', ?, 'Admin')",
+        (password_hash_value,),
+    )
+    connection.commit()
+    cursor.execute("SELECT user_id FROM users WHERE username = 'admin' LIMIT 1")
+    row = cursor.fetchone()
+    if not row:
+        return
+    uid = int(row[0])
+    connection.execute(
+        'INSERT OR IGNORE INTO user_settings (user_id, theme_choice, default_language, sidebar_collapsed) VALUES (?, ?, ?, 0)',
+        (uid, 'vibrant_dark', 'en'),
+    )
+    connection.commit()
+
+
+def seed_system_settings_defaults(connection):
+    for key_token, value_token in (('telegram_bot_token', ''), ('telegram_chat_id', '')):
+        connection.execute(
+            'INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)',
+            (key_token, value_token),
+        )
+    connection.commit()
+
+
+def get_user_by_username(connection, username):
+    cursor = connection.cursor()
+    cursor.execute(
+        'SELECT user_id, username, password_hash, role FROM users WHERE username = ? LIMIT 1',
+        (str(username or '').strip(),),
+    )
+    row = cursor.fetchone()
+    if not row:
+        return None
+    return {'user_id': int(row[0]), 'username': str(row[1]), 'password_hash': str(row[2]), 'role': str(row[3])}
+
+
+def get_user_by_id(connection, user_id):
+    cursor = connection.cursor()
+    cursor.execute(
+        'SELECT user_id, username, password_hash, role FROM users WHERE user_id = ? LIMIT 1',
+        (int(user_id),),
+    )
+    row = cursor.fetchone()
+    if not row:
+        return None
+    return {'user_id': int(row[0]), 'username': str(row[1]), 'password_hash': str(row[2]), 'role': str(row[3])}
+
+
+def update_user_password_hash(connection, user_id, new_hash):
+    connection.execute('UPDATE users SET password_hash = ? WHERE user_id = ?', (str(new_hash), int(user_id)))
+    connection.commit()
+
+
+def get_user_settings_row(connection, user_id):
+    cursor = connection.cursor()
+    cursor.execute(
+        'SELECT theme_choice, default_language, sidebar_collapsed FROM user_settings WHERE user_id = ? LIMIT 1',
+        (int(user_id),),
+    )
+    row = cursor.fetchone()
+    if not row:
+        return {'theme_choice': 'vibrant_dark', 'default_language': 'en', 'sidebar_collapsed': 0}
+    return {
+        'theme_choice': str(row[0] or 'vibrant_dark'),
+        'default_language': str(row[1] or 'en'),
+        'sidebar_collapsed': int(row[2] or 0),
+    }
+
+
+def upsert_user_settings_row(connection, user_id, theme_choice, default_language, sidebar_collapsed):
+    connection.execute(
+        'INSERT INTO user_settings (user_id, theme_choice, default_language, sidebar_collapsed) VALUES (?, ?, ?, ?) '
+        'ON CONFLICT(user_id) DO UPDATE SET theme_choice = excluded.theme_choice, '
+        'default_language = excluded.default_language, sidebar_collapsed = excluded.sidebar_collapsed',
+        (int(user_id), str(theme_choice), str(default_language), int(sidebar_collapsed)),
+    )
+    connection.commit()
+
+
+def insert_alert_log_row(connection, host_id, alert_type, message_text, delivery_status):
+    connection.execute(
+        'INSERT INTO alert_logs (host_id, alert_type, message_text, delivery_status) VALUES (?, ?, ?, ?)',
+        (
+            int(host_id) if host_id is not None else None,
+            str(alert_type or 'unknown'),
+            str(message_text or ''),
+            str(delivery_status or 'unknown'),
+        ),
+    )
+    connection.commit()
+
+
+def list_alert_logs(connection, limit_value=200):
+    cursor = connection.cursor()
+    cursor.execute(
+        'SELECT log_id, timestamp, host_id, alert_type, message_text, delivery_status '
+        'FROM alert_logs ORDER BY datetime(timestamp) DESC, log_id DESC LIMIT ?',
+        (int(limit_value),),
+    )
+    rows = []
+    for log_id, ts, hid, atype, msg, status in cursor.fetchall():
+        rows.append(
+            {
+                'log_id': int(log_id),
+                'timestamp': str(ts),
+                'host_id': int(hid) if hid is not None else None,
+                'alert_type': str(atype or ''),
+                'message_text': str(msg or ''),
+                'delivery_status': str(status or ''),
+            }
+        )
+    return rows
+
+
+def get_system_setting_value(connection, key_name):
+    cursor = connection.cursor()
+    cursor.execute('SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1', (str(key_name),))
+    row = cursor.fetchone()
+    return str(row[0]) if row else ''
+
+
+def set_system_setting_value(connection, key_name, value_text):
+    connection.execute(
+        'INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) '
+        'ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value',
+        (str(key_name), str(value_text or '')),
+    )
+    connection.commit()
+    cursor = connection.cursor()
+    defaults = [('telegram_bot_token', ''), ('telegram_chat_id', '')]
+    for key_part, value_part in defaults:
+        cursor.execute(
+            'INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)',
+            (key_part, value_part),
+        )
+    connection.commit()
+
+
+def _ensure_system_manuals_schema(connection):
+    connection.execute(
+        'CREATE TABLE IF NOT EXISTS system_manuals ('
+        'manual_id INTEGER PRIMARY KEY AUTOINCREMENT,'
+        'vendor_key TEXT UNIQUE NOT NULL,'
+        'title_en TEXT NOT NULL,'
+        'title_ru TEXT NOT NULL,'
+        'title_hy TEXT NOT NULL,'
+        'body_en TEXT NOT NULL,'
+        'body_ru TEXT NOT NULL,'
+        'body_hy TEXT NOT NULL,'
+        'nlp_baseline_en TEXT NOT NULL'
+        ')'
+    )
+
+
+def seed_system_manuals(connection):
+    cursor = connection.cursor()
+    cursor.execute('SELECT COUNT(*) FROM system_manuals')
+    if cursor.fetchone()[0] > 0:
+        return
+    rows = [
+        (
+            'dell_idrac9_thermal',
+            'Dell PowerEdge iDRAC 9 thermal and airflow playbook',
+            'Dell PowerEdge iDRAC 9: тепловой режим и воздушный поток',
+            'Dell PowerEdge iDRAC 9 ջերմային և օդային հոսք',
+            'When iDRAC 9 reports rising inlet or exhaust differentials, validate bezel integrity, cable arm management, and fan redundancy groups inside OpenManage Enterprise or iDRAC GUI before swapping parts. Compare SNMP coolingDeviceReading against chassis intrusion flags and power supply load sharing. Escalate to Dell SupportAssist collections if PERC HBA queues coincide with thermal ramps.',
+            'При росте перепада температур на iDRAC 9 проверьте целостность безеля, кабельный менеджмент и группы резервирования вентиляторов в OpenManage Enterprise или iDRAC. Сравните SNMP coolingDeviceReading с флагами вскрытия корпуса и балансировкой БП. Эскалируйте в SupportAssist если очереди PERC совпадают с ростом температуры.',
+            'Երբ iDRAC 9-ը ցույց է տալիս մուտքային/ելքային ջերմաստիճանի տարբերության աճ, ստուգեք առաջնային բեզելը, մալուխի կառավարումը և հովացուցիչների կրկնակի խմբերը OpenManage Enterprise կամ iDRAC-ում։ Համեմատեք SNMP coolingDeviceReading-ը պատուհանի ներխուժման դրոշակների հետ։',
+            'dell poweredge idrac9 thermal cooling openmanage bezel airflow perc queue snmp 674.10892.5',
+        ),
+        (
+            'cisco_nexus_stp',
+            'Cisco Nexus spanning-tree and fabric stability',
+            'Cisco Nexus spanning-tree и стабильность фабрики',
+            'Cisco Nexus spanning-tree և ֆաբրիկայի կայունություն',
+            'For NX-OS platforms, correlate SNMP dot1dStpTopChanges with interface ifOperStatus transitions on vPC member ports. Use Ethanalyzer captures on supervisors for BPDU inconsistencies, verify VPC role consistency, and ensure MST region alignment across VDCs before changing root bridge priorities.',
+            'На NX-OS сопоставьте SNMP dot1dStpTopChanges с переходами ifOperStatus на портах vPC. Используйте Ethanalyzer на супервизорах для BPDU, проверьте роли vPC и выравнивание MST между VDC перед сменой приоритетов корня.',
+            'NX-OS-ում համադրեք SNMP dot1dStpTopChanges-ը vPC պորտերի ifOperStatus փոփոխությունների հետ։ Սուպերվիզորներում օգտագործեք Ethanalyzer BPDU անհամապատասխանությունների համար։',
+            'cisco nexus nxos spanning tree vpc bpdu mst vdc ethanalyzer snmp dot1dStpTopChanges',
+        ),
+        (
+            'dell_perc_battery',
+            'Dell PERC RAID battery and cache destage',
+            'Dell PERC батарея кэша и сброс',
+            'Dell PERC cache մարտկոց և destage',
+            'If virtualDiskState SNMP counters show degraded write-back while batteryLearnCycleStatus is active, expect forced write-through until learn completes. Inspect physicalDiskSmartAlert for predictive failures, flash NV cache modules on 12G/13G PERC H730/H740, and schedule controlled reboot only after verifying redundancy.',
+            'Если virtualDiskState деградировал в write-through при активном batteryLearnCycleStatus, дождитесь learn. Проверьте physicalDiskSmartAlert, NV-кэш модули PERC H730/H740 и планируйте перезагрузку после проверки избыточности.',
+            'Եթե virtualDiskState-ը write-back-ից անցել է write-through batteryLearnCycleStatus ակտիվ լինելու պայմաններում, սպասեք learn ավարտին։ Ստուգեք physicalDiskSmartAlert և NV cache մոդուլները PERC H730/H740-ում։',
+            'dell perc raid battery learn cycle virtualDiskState physicalDiskSmartAlert h730 h740 nv cache snmp',
+        ),
+        (
+            'fortinet_ha',
+            'FortiGate FortiOS HA cluster integrity',
+            'FortiGate FortiOS кластер HA',
+            'FortiGate FortiOS HA կլաստեր',
+            'Monitor fgHaStatsIndex via SNMP for heartbeat skew. If fgSysSesCount diverges between cluster members while fgHaSystemMode reports active-active, validate dedicated HA links, session sync kernel timers, and checksum split-brain counters before executing ha failover commands.',
+            'Следите за fgHaStatsIndex на предмет дрейфа heartbeat. При расхождении fgSysSesCount при active-active проверьте выделенные HA линки и таймеры синхронизации сессий до failover.',
+            'Հետևեք fgHaStatsIndex-ին heartbeat շեղման համար։ active-active fgHaSystemMode-ում fgSysSesCount տարբերության դեպքում ստուգեք HA հատուկ հղումները։',
+            'fortinet fortigate fortios ha fgHaStatsIndex fgSysSesCount snmp cluster split brain',
+        ),
+        (
+            'paloalto_dataplane',
+            'Palo Alto PAN-OS dataplane saturation',
+            'Palo Alto PAN-OS насыщение dataplane',
+            'Palo Alto PAN-OS dataplane հագեցում',
+            'Track panVsysActiveOtherIpCps alongside panSessionSslProxyUtilization. When SSL proxy and threat processing exceed dataplane core budgets, redistribute security profiles, enable offload features on DP2/DP3 cards, and validate log card backpressure via SNMP resource meters.',
+            'Отслеживайте panVsysActiveOtherIpCps и panSessionSslProxyUtilization. При превышении бюджета ядер dataplane перераспределите профили, включите offload на DP2/DP3 и проверьте давление логов SNMP.',
+            'Հետևեք panVsysActiveOtherIpCps և panSessionSslProxyUtilization-ին։ SSL պրոքսի overload-ի դեպքում վերաբաշխեք պրոֆիլները և ստուգեք log card backpressure-ը։',
+            'palo alto panos dataplane ssl proxy panSessionSslProxyUtilization panVsysActiveOtherIpCps snmp',
+        ),
+        (
+            'synology_raid',
+            'Synology DSM RAID and volume health',
+            'Synology DSM RAID и тома',
+            'Synology DSM RAID և volumes',
+            'Cross-check synoDiskSMARTStatus with synoRAID RAIDStatus via SNMP when synoSystemStatus reports warning. Plan disk group rebuild windows, verify BTRFS scrub schedules, and ensure expansion units maintain redundant paths before swapping drives.',
+            'Сопоставьте synoDiskSMARTStatus и synoRAID RAIDStatus при предупреждении synoSystemStatus. Планируйте rebuild, проверьте BTRFS scrub и избыточность путей расширения перед заменой дисков.',
+            'Համադրեք synoDiskSMARTStatus-ը synoRAID RAIDStatus-ի հետ synoSystemStatus warning-ի դեպքում։ Պլանավորեք rebuild և BTRFS scrub։',
+            'synology dsm raid smart synoDiskSMARTStatus synoRAID RAIDStatus btrfs scrub expansion snmp',
+        ),
+    ]
+    insert_sql = (
+        'INSERT INTO system_manuals (vendor_key, title_en, title_ru, title_hy, body_en, body_ru, body_hy, nlp_baseline_en) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    )
+    for row in rows:
+        cursor.execute(insert_sql, row)
     connection.commit()
 
 
@@ -551,11 +1111,6 @@ def seed_monitoring_topology_and_vulnerability_playbooks(connection):
                 '$ProgressPreference = \'SilentlyContinue\'; ssh -V 2>&1; Get-Service sshd | Select-Object Status,Name',
             ),
         )
-    cursor.execute('SELECT COUNT(*) FROM hosts')
-    if cursor.fetchone()[0] == 0:
-        connection.execute("INSERT INTO hosts (hostname, ip_address, device_type) VALUES ('Web01','10.10.40.11','VM')")
-        connection.execute("INSERT INTO hosts (hostname, ip_address, device_type) VALUES ('DB01','10.10.40.21','Server')")
-        connection.execute("INSERT INTO hosts (hostname, ip_address, device_type) VALUES ('Edge-Switch-01','10.10.40.254','Switch')")
     cursor.execute(
         '''SELECT COUNT(*) FROM service_dependencies'''
     )
@@ -575,6 +1130,12 @@ def seed_monitoring_topology_and_vulnerability_playbooks(connection):
 def ensure_database(db_path=None):
     connection = get_connection(db_path)
     initialize_schema(connection)
+    seed_default_users(connection)
+    seed_system_settings_defaults(connection)
     seed_sample_manual_entries(connection)
+    seed_system_manuals(connection)
+    cursor = connection.cursor()
+    _seed_vendor_playbooks(cursor)
+    connection.commit()
     seed_monitoring_topology_and_vulnerability_playbooks(connection)
     return connection

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="loginDocTitle">DevAI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="sentinel-login-body" data-page="login">
+  <div class="sentinel-login-ambient"></div>
+  <main class="sentinel-login-shell">
+    <section class="sentinel-login-card">
+      <div class="sentinel-login-brand">
+        <div class="sentinel-login-mark"></div>
+        <div>
+          <div class="sentinel-login-title" data-i18n="brandTitle">DevAI</div>
+          <div class="sentinel-login-sub" data-i18n="loginSubtitle">Secure observability console</div>
+        </div>
+      </div>
+      <div class="sentinel-login-lang">
+        <select id="language-select" class="sentinel-field sentinel-focus-pulse">
+          <option value="en">English</option>
+          <option value="ru">Русский</option>
+          <option value="hy">Հայերեն</option>
+        </select>
+      </div>
+      {% if auth_failed %}
+      <div class="sentinel-login-error" role="alert" data-i18n="loginErrorInvalid">Invalid credentials</div>
+      {% endif %}
+      <form class="sentinel-login-form" method="post" action="{{ url_for('login') }}">
+        <input type="hidden" name="next" value="{{ request.args.get('next','') }}">
+        <label class="sentinel-login-field">
+          <span data-i18n="loginUsername">Username</span>
+          <input class="sentinel-field" type="text" name="username" autocomplete="username" required>
+        </label>
+        <label class="sentinel-login-field">
+          <span data-i18n="loginPassword">Password</span>
+          <input class="sentinel-field" type="password" name="password" autocomplete="current-password" required>
+        </label>
+        <label class="sentinel-login-remember">
+          <input type="checkbox" name="remember" value="on">
+          <span data-i18n="loginRemember">Remember me</span>
+        </label>
+        <button type="submit" class="sentinel-chip-btn sentinel-chip-primary sentinel-login-submit" data-i18n="loginSubmit">Sign in</button>
+      </form>
+    </section>
+  </main>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
